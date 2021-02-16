@@ -13,7 +13,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary>
                     <Image x:Key="Remove" Source="Resources/Cancel_32x.png"/>
-                    <Image x:Key="RemoveGrey" Source="Resources/Remove_grey_32x.png"/>
+                    <Image x:Key="RemoveGrey" Source="Resources/Cancel_grey_32x.png"/>
                     <Image x:Key="Details" Source="Resources/ListView_32x.png"/>
                     <Image x:Key="Log" Source="Resources/Log_32x.png"/>
                     <Image x:Key="Start" Source="Resources/StartWithoutDebug_32x.png"/>

@@ -725,6 +725,7 @@ namespace ValheimServerWarden
                                      "Remove Server", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
             if (confirmResult == MessageBoxResult.Yes)
             {
+
                 servers.Remove(server);
                 RefreshDataGrid();
             }
