@@ -1,0 +1,102 @@
+﻿<Window x:Class="ValheimServerWarden.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="http://schemas.modernwpf.com/2019"
+        ui:WindowHelper.UseModernWindowStyle="True"
+        xmlns:local="clr-namespace:ValheimServerWarden"
+        mc:Ignorable="d"
+        Title="Valheim Server Warden" Height="450" Width="800" Closed="Window_Closed" StateChanged="Window_StateChanged" Closing="Window_Closing" Icon="/Resources/vsw2_256.png" IsVisibleChanged="Window_IsVisibleChanged">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary>
+                    <Image x:Key="Remove" Source="Resources/Cancel_32x.png"/>
+                    <Image x:Key="RemoveGrey" Source="Resources/Remove_grey_32x.png"/>
+                    <Image x:Key="Details" Source="Resources/ListView_32x.png"/>
+                    <Image x:Key="Log" Source="Resources/Log_32x.png"/>
+                    <Image x:Key="Start" Source="Resources/StartWithoutDebug_32x.png"/>
+                    <Image x:Key="StartGrey" Source="Resources/StartWithoutDebug_grey_32x.png"/>
+                    <Image x:Key="Stop" Source="Resources/Stop_32x.png"/>
+                    <Image x:Key="StopGrey" Source="Resources/Stop_grey_32x.png"/>
+                </ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition/>
+            <RowDefinition Height="37"/>
+        </Grid.RowDefinitions>
+        <TabControl x:Name="tabsMain" Grid.Row="0">
+            <TabItem Header="Servers">
+                <DataGrid x:Name="dgServers" Margin="0,0,0,0" CellEditEnding="dgServers_CellEditEnding" SelectionMode="Single" CanUserAddRows="False" RowEditEnding="dgServers_RowEditEnding" AutoGeneratingColumn="dgServers_AutoGeneratingColumn" BeginningEdit="dgServers_BeginningEdit" CanUserDeleteRows="False">
+                    <DataGrid.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem x:Name="serversMenuAdd" Header="Add" Click="serversMenuAdd_Click">
+                                <MenuItem.Icon>
+                                    <Image Source="Resources/Add_32x.png"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <Separator></Separator>
+                            <MenuItem x:Name="serversMenuRemove" Header="Remove" Click="serversMenuRemove_Click">
+                                <MenuItem.Icon>
+                                    <DynamicResource ResourceKey="Remove"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <Separator></Separator>
+                            <MenuItem x:Name="serversMenuDetails" Header="Details" Click="serversMenuDetails_Click">
+                                <MenuItem.Icon>
+                                    <Image Source="Resources/ListView_32x.png"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem x:Name="serversMenuLog" Header="Server Log" Click="serversMenuLog_Click">
+                                <MenuItem.Icon>
+                                    <Image Source="Resources/Log_32x.png"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <Separator></Separator>
+                            <MenuItem x:Name="serversMenuStart" Header="Start" Click="serversMenuStart_Click">
+                                <MenuItem.Icon>
+                                    <DynamicResource ResourceKey="Start"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem x:Name="serversMenuStop" Header="Stop" Click="serversMenuStop_Click">
+                                <MenuItem.Icon>
+                                    <DynamicResource ResourceKey="Stop"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </ContextMenu>
+                    </DataGrid.ContextMenu>
+                </DataGrid>
+            </TabItem>
+            <TabItem Header="Settings">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <!--ColumnDefinition Width="31*"/>
+            <ColumnDefinition Width="129*"/-->
+                    </Grid.ColumnDefinitions>
+                    <Label Content="Dedicated Server Location" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top"/>
+                    <TextBox x:Name="txtServerPath" Margin="80,41,10,0" TextWrapping="Wrap" VerticalAlignment="Top" Cursor="Arrow" IsReadOnly="True"/>
+                    <Button x:Name="btnServerPath" Content="Change" HorizontalAlignment="Left" Margin="10,41,0,0" VerticalAlignment="Top" Click="btnServerPath_Click"/>
+                    <Label x:Name="lblTheme" Content="Theme" HorizontalAlignment="Left" Margin="10,136,0,0" VerticalAlignment="Top"/>
+                    <RadioButton x:Name="radThemeLight" Content="Light" Margin="10,160,0,0" VerticalAlignment="Top" Width="108" GroupName="AppTheme" Checked="radThemeLight_Checked" RenderTransformOrigin="0.418,0.467"/>
+                    <RadioButton x:Name="radThemeDark" Content="Dark" Margin="135,160,0,0" GroupName="AppTheme" VerticalAlignment="Top" Checked="radThemeDark_Checked"/>
+                    <CheckBox x:Name="chkAutoCheckUpdate" Content="Automatically check for update" Margin="10,88,0,0" VerticalAlignment="Top" Click="chkAutoCheckUpdate_Click"/>
+                    <Button x:Name="btnUpdateCheck" Content="Check Now" Margin="251,88,0,0" VerticalAlignment="Top" Click="btnUpdateCheck_Click"/>
+
+                </Grid>
+            </TabItem>
+            <TabItem Header="Log">
+                <RichTextBox x:Name="txtLog"></RichTextBox>
+            </TabItem>
+        </TabControl>
+        <StatusBar x:Name="statusbarMain" VerticalAlignment="Bottom" Height="37" Grid.Row="1">
+            <StatusBarItem>
+                <Label x:Name="lblLastMessage"></Label>
+            </StatusBarItem>
+        </StatusBar>
+
+    </Grid>
+</Window>

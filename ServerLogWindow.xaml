@@ -1,0 +1,17 @@
+﻿<Window x:Class="ValheimServerWarden.ServerLogWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ValheimServerWarden"
+        mc:Ignorable="d"
+        xmlns:ui="http://schemas.modernwpf.com/2019"
+        ui:WindowHelper.UseModernWindowStyle="True"
+        Title="ServerLogWindow" Height="450" Width="800">
+    <Grid>
+        <RichTextBox x:Name="txtLog" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <FlowDocument>
+            </FlowDocument>
+        </RichTextBox>
+    </Grid>
+</Window>

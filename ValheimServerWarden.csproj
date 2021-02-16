@@ -1,0 +1,99 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net5.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <StartupObject>ValheimServerWarden.App</StartupObject>
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <Product>Valheim Server Warden</Product>
+    <Authors>Razzmatazz</Authors>
+    <ApplicationIcon>Resources\vsw2.ico</ApplicationIcon>
+    <PackageId>ValheimServerWarden</PackageId>
+    <AssemblyName>Valheim Server Warden</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Resources\Add_32x.png" />
+    <None Remove="Resources\Cancel_32x.png" />
+    <None Remove="Resources\Cancel_grey_32x.png" />
+    <None Remove="Resources\ListView_32x.png" />
+    <None Remove="Resources\Log_32x.png" />
+    <None Remove="Resources\Settings_16x.png" />
+    <None Remove="Resources\Settings_32x.png" />
+    <None Remove="Resources\StartWithoutDebug_32x.png" />
+    <None Remove="Resources\StartWithoutDebug_grey_32x.png" />
+    <None Remove="Resources\Stop_32x.png" />
+    <None Remove="Resources\Stop_grey_32x.png" />
+    <None Remove="Resources\vsw2.ico" />
+    <None Remove="Resources\vsw2_256.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Resources\vsw2.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModernWpfUis" Version="1.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\Settings.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\Add_32x.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Cancel_32x.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Cancel_grey_32x.png" />
+    <Resource Include="Resources\ListView_32x.png" />
+    <Resource Include="Resources\Log_32x.png" />
+    <Resource Include="Resources\Settings_16x.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Settings_32x.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\StartWithoutDebug_32x.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\StartWithoutDebug_grey_32x.png" />
+    <Resource Include="Resources\Stop_32x.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\Stop_grey_32x.png" />
+    <Resource Include="Resources\vsw2_256.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="copy &quot;$(TargetDir)Valheim Server Warden.runtimeconfig.json&quot; &quot;$(TargetDir)app.publish\&quot;&#xD;&#xA;copy &quot;$(TargetDir)Valheim Server Warden.dll&quot; &quot;$(TargetDir)app.publish\&quot;&#xD;&#xA;copy &quot;$(TargetDir)Valheim Server Warden.exe&quot; &quot;$(TargetDir)app.publish\&quot;&#xD;&#xA;copy &quot;$(TargetDir)ModernWpf.dll&quot; &quot;$(TargetDir)app.publish\&quot;" />
+  </Target>
+</Project>
