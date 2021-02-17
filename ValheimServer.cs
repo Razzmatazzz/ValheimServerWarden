@@ -280,7 +280,7 @@ namespace ValheimServerWarden
             }
 
             //Monitor for new player connected
-            rx = new Regex(@"Got character ZDOID from (.+) : (\d+:\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            rx = new Regex(@"Got character ZDOID from (.+) : (-?\d+:-?\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
             match = rx.Match(msg);
             if (match.Success)
             {
@@ -488,31 +488,31 @@ namespace ValheimServerWarden
         {
             if (inTxn)
             {
-                if (!backupData.name.Equals(data.name))
+                if (backupData.name != data.name)
                 {
                     OnUpdated(new UpdatedEventArgs("Name"));
                 }
-                if (!backupData.port.Equals(data.port))
+                if (backupData.port!= data.port)
                 {
                     OnUpdated(new UpdatedEventArgs("Port"));
                 }
-                if (!backupData.world.Equals(data.world))
+                if (backupData.world != data.world)
                 {
                     OnUpdated(new UpdatedEventArgs("World"));
                 }
-                if (!backupData.password.Equals(data.password))
+                if (backupData.password != data.password)
                 {
                     OnUpdated(new UpdatedEventArgs("Password"));
                 }
-                if (!backupData.savedir.Equals(data.savedir))
+                if (backupData.savedir != data.savedir)
                 {
                     OnUpdated(new UpdatedEventArgs("SaveDir"));
                 }
-                if (!backupData.autostart.Equals(data.autostart))
+                if (backupData.autostart != data.autostart)
                 {
                     OnUpdated(new UpdatedEventArgs("Autostart"));
                 }
-                if (!backupData.log.Equals(data.log))
+                if (backupData.log != data.log)
                 {
                     OnUpdated(new UpdatedEventArgs("Log"));
                 }

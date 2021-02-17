@@ -37,7 +37,6 @@ namespace ValheimServerWarden
         private DateTime lastUpdateCheck;
         private List<ServerDetailsWindow> serverDetailWindows;
         private List<ServerLogWindow> serverLogWindows;
-        private bool skipCellEditEnding;
         private string ServerJsonPath
         {
             get
@@ -102,7 +101,6 @@ namespace ValheimServerWarden
             RefreshDataGrid();
             serverDetailWindows = new List<ServerDetailsWindow>();
             serverLogWindows = new List<ServerLogWindow>();
-            skipCellEditEnding = false;
         }
 
         private void NotifyIcon_Click(object sender, EventArgs e)
@@ -447,7 +445,6 @@ namespace ValheimServerWarden
 
         private void dgServers_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
         {
-            if (skipCellEditEnding) return;
             try
             {
                 if (e.Column.Header.Equals("Name"))
@@ -462,6 +459,17 @@ namespace ValheimServerWarden
                             e.Cancel = true;
                             return;
                         }
+                    }
+                }
+                else if (e.Column.Header.Equals("Password"))
+                {
+                    string newPass = ((TextBox)e.EditingElement).Text;
+                    if (newPass.Length != 0 && newPass.Length < 5)
+                    {
+                        logMessage("Passwords must be at least 5 characters long.", LogType.Error);
+                        ((TextBox)e.EditingElement).Text = ((ValheimServer)e.Row.Item).Password;
+                        e.Cancel = true;
+                        return;
                     }
                 }
                 //force the edit to end so the dataGrid can get refreshed again. if there's only one item in the datagrid, it never leaves editing.

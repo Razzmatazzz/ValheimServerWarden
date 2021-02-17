@@ -197,6 +197,14 @@ namespace ValheimServerWarden
             {
                 txtWorld.Text = Server.World;
             }
+            if (txtPassword.Text.Length == 0 || txtPassword.Text.Length >= 5)
+            {
+                Server.Password = txtPassword.Text;
+            }
+            else
+            {
+                txtPassword.Text = Server.Password;
+            }
             Server.Password = txtPassword.Text;
             Server.SaveDir = txtSaveDir.Text;
             Server.Autostart = chkAutostart.IsChecked.HasValue ? chkAutostart.IsChecked.Value : false;

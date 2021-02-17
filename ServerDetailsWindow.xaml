@@ -65,9 +65,9 @@
             <TextBox x:Name="txtName" Margin="99,70,10,0" TextWrapping="Wrap" VerticalAlignment="Top"/>
             <Label Content="Port" HorizontalAlignment="Left" Margin="10,114,0,0" VerticalAlignment="Top"/>
             <TextBox x:Name="txtPort" HorizontalAlignment="Left" Margin="99,107,0,0" Text="" TextWrapping="Wrap" VerticalAlignment="Top" Width="84"/>
-            <TextBox x:Name="txtWorld" HorizontalAlignment="Left" Margin="99,144,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120"/>
+            <TextBox x:Name="txtWorld" Margin="99,144,10,0" TextWrapping="Wrap" VerticalAlignment="Top"/>
             <Label Content="World" HorizontalAlignment="Left" Margin="10,151,0,0" VerticalAlignment="Top"/>
-            <TextBox x:Name="txtPassword" HorizontalAlignment="Left" Margin="99,181,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120"/>
+            <TextBox x:Name="txtPassword" Margin="99,181,10,0" TextWrapping="Wrap" VerticalAlignment="Top"/>
             <Label Content="Password" HorizontalAlignment="Left" Margin="10,188,0,0" VerticalAlignment="Top"/>
             <TextBox x:Name="txtSaveDir" Margin="99,218,10,0" TextWrapping="Wrap" VerticalAlignment="Top" IsReadOnly="True">
                 <TextBox.ContextMenu>
