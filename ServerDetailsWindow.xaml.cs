@@ -43,11 +43,15 @@ namespace ValheimServerWarden
             {
                 RefreshControls();
             });
-            this.Server.PlayerConnected += ((object sender, PlayerConnectionEventArgs e) =>
+            this.Server.PlayerConnected += ((object sender, PlayerEventArgs e) =>
             {
                 RefreshControls();
             });
-            this.Server.PlayerDisconnected += ((object sender, PlayerConnectionEventArgs e) =>
+            this.Server.PlayerDisconnected += ((object sender, PlayerEventArgs e) =>
+            {
+                RefreshControls();
+            });
+            this.Server.PlayerDied += ((object sender, PlayerEventArgs e) =>
             {
                 RefreshControls();
             });
@@ -236,7 +240,21 @@ namespace ValheimServerWarden
             if (e.Column.Header.Equals("JoinTime"))
             {
                 e.Column.Header = "Joined";
+            } else if (e.Column.Header.Equals("SteamID"))
+            {
+                e.Cancel = true;
             }
+        }
+
+        private void dgPlayers_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+        {
+            menuCopySteamId.IsEnabled = (dgPlayers.SelectedIndex != -1);
+        }
+
+        private void menuCopySteamId_Click(object sender, RoutedEventArgs e)
+        {
+            Player player = (Player)dgPlayers.SelectedItem;
+            Clipboard.SetText(player.SteamID);
         }
     }
 }

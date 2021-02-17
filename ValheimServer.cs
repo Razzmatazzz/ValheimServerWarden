@@ -34,8 +34,9 @@ namespace ValheimServerWarden
         }
         public event EventHandler<UpdatedEventArgs> Updated;
         public event EventHandler<FailedPasswordEventArgs> FailedPassword;
-        public event EventHandler<PlayerConnectionEventArgs> PlayerConnected;
-        public event EventHandler<PlayerConnectionEventArgs> PlayerDisconnected;
+        public event EventHandler<PlayerEventArgs> PlayerConnected;
+        public event EventHandler<PlayerEventArgs> PlayerDisconnected;
+        public event EventHandler<PlayerEventArgs> PlayerDied;
         public event EventHandler<RandomServerEventArgs> RandomServerEvent;
         public event EventHandler<ServerEventArgs> Starting;
         public event EventHandler<ServerEventArgs> Started;
@@ -279,14 +280,29 @@ namespace ValheimServerWarden
             }
 
             //Monitor for new player connected
-            rx = new Regex(@"Got character ZDOID from (.+) : \d+:\d+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            rx = new Regex(@"Got character ZDOID from (.+) : (\d+:\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
             match = rx.Match(msg);
             if (match.Success)
             {
-                Player player = new Player(match.Groups[1].ToString(), this.connectingSteamID);
-                this.players.Add(player);
-                this.connectingSteamID = null;
-                OnPlayerConnected(new PlayerConnectionEventArgs(this, player));
+                if (this.connectingSteamID != null)
+                {
+                    Player player = new Player(match.Groups[1].ToString(), this.connectingSteamID);
+                    this.players.Add(player);
+                    this.connectingSteamID = null;
+                    OnPlayerConnected(new PlayerEventArgs(this, player));
+                }
+                else if (match.Groups[2].ToString().Equals("0:0"))
+                {
+                    foreach (Player player in this.players)
+                    {
+                        if (player.Name.Equals(match.Groups[1].ToString()))
+                        {
+                            player.Deaths++;
+                            OnPlayerDied(new PlayerEventArgs(this, player));
+                            break;
+                        }
+                    }
+                }
             }
 
             //Monitor for player disconnected
@@ -301,7 +317,7 @@ namespace ValheimServerWarden
                     if (steamid.Equals(player.SteamID))
                     {
                         this.players.Remove(player);
-                        OnPlayerDisconnected(new PlayerConnectionEventArgs(this, player));
+                        OnPlayerDisconnected(new PlayerEventArgs(this, player));
                         break;
                     }
                 }
@@ -526,14 +542,19 @@ namespace ValheimServerWarden
             EventHandler<FailedPasswordEventArgs> handler = FailedPassword;
             if (null != handler) handler(this, args);
         }
-        private void OnPlayerConnected(PlayerConnectionEventArgs args)
+        private void OnPlayerConnected(PlayerEventArgs args)
         {
-            EventHandler<PlayerConnectionEventArgs> handler = PlayerConnected;
+            EventHandler<PlayerEventArgs> handler = PlayerConnected;
             if (null != handler) handler(this, args);
         }
-        private void OnPlayerDisconnected(PlayerConnectionEventArgs args)
+        private void OnPlayerDisconnected(PlayerEventArgs args)
         {
-            EventHandler<PlayerConnectionEventArgs> handler = PlayerDisconnected;
+            EventHandler<PlayerEventArgs> handler = PlayerDisconnected;
+            if (null != handler) handler(this, args);
+        }
+        private void OnPlayerDied(PlayerEventArgs args)
+        {
+            EventHandler<PlayerEventArgs> handler = PlayerDied;
             if (null != handler) handler(this, args);
         }
         private void OnServerExited(ServerExitedEventArgs args)
@@ -621,11 +642,11 @@ namespace ValheimServerWarden
             get { return _steamid; }
         }
     }
-    public class PlayerConnectionEventArgs : ServerEventArgs
+    public class PlayerEventArgs : ServerEventArgs
     {
         private readonly Player _player;
 
-        public PlayerConnectionEventArgs(ValheimServer server, Player player) : base(server)
+        public PlayerEventArgs(ValheimServer server, Player player) : base(server)
         {
             _player = player;
         }

@@ -70,5 +70,17 @@ namespace ValheimServerWarden.Properties {
                 this["AutoCheckUpdate"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool ShowMinimizeMessage {
+            get {
+                return ((bool)(this["ShowMinimizeMessage"]));
+            }
+            set {
+                this["ShowMinimizeMessage"] = value;
+            }
+        }
     }
 }

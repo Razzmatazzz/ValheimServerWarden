@@ -267,6 +267,7 @@ namespace ValheimServerWarden
                 server.FailedPassword += Server_FailedPassword;
                 server.PlayerConnected += Server_PlayerConnected;
                 server.PlayerDisconnected += Server_PlayerDisconnected;
+                server.PlayerDied += Server_PlayerDied;
                 server.RandomServerEvent += Server_RandomServerEvent;
             }
             catch (Exception ex)
@@ -322,13 +323,13 @@ namespace ValheimServerWarden
             }
         }
 
-        private void Server_PlayerDisconnected(object sender, PlayerConnectionEventArgs e)
+        private void Server_PlayerDisconnected(object sender, PlayerEventArgs e)
         {
             try
             {
                 this.Dispatcher.Invoke(() =>
                 {
-                    logMessage($"Server {e.Server.Name}: player {e.Player.Name} ({e.Player.SteamID}) disconnected ");
+                    logMessage($"Server {e.Server.Name}: player {e.Player.Name} ({e.Player.SteamID}) disconnected");
                     RefreshDataGrid();
                 });
             }
@@ -338,19 +339,35 @@ namespace ValheimServerWarden
             }
         }
 
-        private void Server_PlayerConnected(object sender, PlayerConnectionEventArgs e)
+        private void Server_PlayerConnected(object sender, PlayerEventArgs e)
         {
             try
             {
                 this.Dispatcher.Invoke(() =>
                 {
-                    logMessage($"Server {e.Server.Name}: player {e.Player.Name} ({e.Player.SteamID}) connected ");
+                    logMessage($"Server {e.Server.Name}: player {e.Player.Name} ({e.Player.SteamID}) connected");
                     RefreshDataGrid();
                 });
             }
             catch (Exception ex)
             {
                 logMessage($"Error responding to PlayerConnected event: {ex.Message}", LogType.Error);
+            }
+        }
+
+        private void Server_PlayerDied(object sender, PlayerEventArgs e)
+        {
+            try
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    logMessage($"Server {e.Server.Name}: player {e.Player.Name} ({e.Player.SteamID}) died");
+                    RefreshDataGrid();
+                });
+            }
+            catch (Exception ex)
+            {
+                logMessage($"Error responding to PlayerDied event: {ex.Message}", LogType.Error);
             }
         }
 
@@ -655,7 +672,12 @@ namespace ValheimServerWarden
                     Hide();
                     if (notifyIcon != null)
                     {
-                        notifyIcon.ShowBalloonTip(2000);
+                        if (Properties.Settings.Default.ShowMinimizeMessage)
+                        {
+                            notifyIcon.ShowBalloonTip(2000);
+                            Properties.Settings.Default.ShowMinimizeMessage = false;
+                            Properties.Settings.Default.Save();
+                        }
                     }
                 }
             }

@@ -45,7 +45,17 @@
                     HorizontalAlignment="Right" VerticalAlignment="Stretch"/>
             <Label Content="Players: " Grid.Column="1" HorizontalAlignment="Left" Margin="5,10,0,0" VerticalAlignment="Top"/>
             <Label x:Name="lblPlayerCount" Content="" Grid.Column="1" HorizontalAlignment="Left" Margin="60,10,0,0" VerticalAlignment="Top"/>
-            <DataGrid x:Name="dgPlayers" Grid.Column="1" Margin="0,34,0,0" CanUserDeleteRows="False" IsReadOnly="True" AutoGeneratingColumn="dgPlayers_AutoGeneratingColumn"/>
+            <DataGrid x:Name="dgPlayers" Grid.Column="1" Margin="0,34,0,0" CanUserDeleteRows="False" IsReadOnly="True" AutoGeneratingColumn="dgPlayers_AutoGeneratingColumn" ContextMenuOpening="dgPlayers_ContextMenuOpening">
+                <DataGrid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem x:Name="menuCopySteamId" Header="Copy SteamID" Click="menuCopySteamId_Click">
+                            <MenuItem.Icon>
+                                <Image Source="Resources/Copy_32x.png"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                    </ContextMenu>
+                </DataGrid.ContextMenu>
+            </DataGrid>
             <Label Content="Status: " HorizontalAlignment="Left" Margin="10,14,0,0" VerticalAlignment="Top"/>
             <Label x:Name="lblStatus" Content="" HorizontalAlignment="Left" Margin="59,14,0,0" VerticalAlignment="Top"/>
             <Label Content="Start time:" HorizontalAlignment="Left" Margin="10,38,0,0" VerticalAlignment="Top"/>
