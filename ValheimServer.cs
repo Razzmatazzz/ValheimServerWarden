@@ -31,6 +31,7 @@ namespace ValheimServerWarden
             internal string savedir;
             internal bool autostart;
             internal bool log;
+            internal int restartHours;
         }
         public event EventHandler<UpdatedEventArgs> Updated;
         public event EventHandler<FailedPasswordEventArgs> FailedPassword;
@@ -76,6 +77,9 @@ namespace ValheimServerWarden
         private DateTime startTime;
         private bool intentionalExit;
         private string connectingSteamID;
+        private bool needsRestart;
+        private bool scheduledRestart;
+        private System.Timers.Timer restartTimer;
         private bool inTxn = false;
 
         public string Name
@@ -155,6 +159,27 @@ namespace ValheimServerWarden
                 this.data.log = value;
             }
         }
+        public int RestartHours
+        {
+            get
+            {
+                return this.data.restartHours;
+            }
+            set
+            {
+                this.data.restartHours = value;
+                if (value > 0 && (this.Status == ServerStatus.Running || this.status == ServerStatus.Starting))
+                {
+                    restartTimer.Interval = this.GetMilisecondsUntilRestart();
+                    restartTimer.Enabled = true;
+                    restartTimer.Start();
+                }
+                else
+                {
+                    restartTimer.Enabled = false;
+                }
+            }
+        }
         [JsonIgnore]
         public bool Running
         {
@@ -201,7 +226,7 @@ namespace ValheimServerWarden
         {
             get { return this.startTime; }
         }
-        public ValheimServer(string name, int port, string world, string password, bool autostart, bool log)
+        public ValheimServer(string name, int port, string world, string password, bool autostart, bool log, int restarthours)
         {
             this.data.name = name;
             this.data.port = 2456;
@@ -210,7 +235,7 @@ namespace ValheimServerWarden
             this.data.savedir = "";
             this.data.autostart = autostart;
             this.data.log = log;
-            //this.processRunning = false;
+            this.data.restartHours = restarthours;
 
             this.process = new Process();
             this.process.StartInfo.EnvironmentVariables["SteamAppId"] = "892970";
@@ -223,15 +248,34 @@ namespace ValheimServerWarden
             this.process.OutputDataReceived += Process_OutputDataReceived;
             this.process.Exited += Process_Exited;
 
+            restartTimer = new System.Timers.Timer();
+            restartTimer.AutoReset = false;
+            restartTimer.Elapsed += RestartTimer_Elapsed;
+
             this.players = new PlayerList();
             this.status = ServerStatus.Stopped;
+            this.scheduledRestart = false;
+            this.needsRestart = false;
         }
 
-        public ValheimServer() : this("My Server", 2456, "Dedicated", "secret", false, false)
+        private void RestartTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            if (this.PlayerCount == 0)
+            {
+                scheduledRestart = true;
+                logMessage($"Initiating scheduled restart for {this.Name}", LogType.Normal);
+                this.Stop();
+            } else
+            {
+                this.needsRestart = true;
+            }
+        }
+
+        public ValheimServer() : this("My Server", 2456, "Dedicated", "Secret", false, false, 0)
         {
         }
 
-        public ValheimServer(string name) : this(name, 2456, "Dedicated", "Secret", false, false)
+        public ValheimServer(string name) : this(name, 2456, "Dedicated", "Secret", false, false, 0)
         {
 
         }
@@ -242,6 +286,14 @@ namespace ValheimServerWarden
             //logname = rgx.Replace(logname, "");
             //return $"{logname}-{this.startTime.ToString("yyyy-MM-dd_HH-mm-ss")}.log";
             return $"{logname}-{this.Port}-{this.World}.log";
+        }
+
+        public double GetMilisecondsUntilRestart()
+        {
+            DateTime restartTime = this.startTime.AddHours(this.RestartHours);
+            //DateTime restartTime = this.startTime.AddMinutes(1);
+            TimeSpan ts = restartTime - this.startTime;
+            return ts.TotalMilliseconds;
         }
 
         private void Process_OutputDataReceived(object sender, DataReceivedEventArgs e)
@@ -269,6 +321,7 @@ namespace ValheimServerWarden
             {
                 this.connectingSteamID = null;
                 OnFailedPassword(new FailedPasswordEventArgs(this, match.Groups[1].ToString()));
+                return;
             }
 
             //Monitor for initiation of new connection
@@ -277,6 +330,7 @@ namespace ValheimServerWarden
             if (match.Success)
             {
                 this.connectingSteamID = match.Groups[1].ToString();
+                return;
             }
 
             //Monitor for new player connected
@@ -303,6 +357,7 @@ namespace ValheimServerWarden
                         }
                     }
                 }
+                return;
             }
 
             //Monitor for player disconnected
@@ -318,9 +373,16 @@ namespace ValheimServerWarden
                     {
                         this.players.Remove(player);
                         OnPlayerDisconnected(new PlayerEventArgs(this, player));
+                        if (this.needsRestart && this.PlayerCount == 0)
+                        {
+                            scheduledRestart = true;
+                            logMessage($"Initiating scheduled restart for {this.Name}", LogType.Normal);
+                            this.Stop();
+                        }
                         break;
                     }
                 }
+                return;
             }
 
             //Monitor for update to number of players connected
@@ -343,6 +405,7 @@ namespace ValheimServerWarden
                     OnStarted(new ServerEventArgs(this));
                     //logMessage($"Server {this.Name}: started", LogType.Success);
                 }
+                return;
             }
 
             //Monitor for server fails to start
@@ -353,6 +416,7 @@ namespace ValheimServerWarden
                 this.status = ServerStatus.Stopping;
                 OnStartFailed(new ServerEventArgs(this));
                 logMessage($"Server {this.Name} failed to start. Maybe try a different port", LogType.Error);
+                return;
             }
 
             //Monitor for random events
@@ -361,6 +425,7 @@ namespace ValheimServerWarden
             if (match.Success)
             {
                 OnRandomServerEvent(new RandomServerEventArgs(this, match.Groups[1].ToString()));
+                return;
             }
         }
 
@@ -400,6 +465,16 @@ namespace ValheimServerWarden
                     System.IO.File.WriteAllText(this.GetLogName(),"");
                 }
                 this.startTime = DateTime.Now;
+                if (this.RestartHours > 0)
+                {
+                    restartTimer.Interval = this.GetMilisecondsUntilRestart();
+                    restartTimer.Enabled = true;
+                    restartTimer.Start();
+                } 
+                else
+                {
+                    restartTimer.Enabled = false;
+                }
                 this.status = ServerStatus.Starting;
                 OnStarting(new ServerEventArgs(this));
                 this.process.StartInfo.FileName = serverpath;
@@ -407,6 +482,8 @@ namespace ValheimServerWarden
                 Thread.CurrentThread.IsBackground = true;
                 //this.processRunning = true;
                 this.process.Refresh();
+                this.needsRestart = false;
+                this.scheduledRestart = false;
                 this.process.Start();
                 this.process.BeginOutputReadLine();
                 this.process.WaitForExit();
@@ -432,6 +509,7 @@ namespace ValheimServerWarden
                     this.process.WaitForExit(2000);
                     SetConsoleCtrlHandler(null, false);
                     this.intentionalExit = true;
+                    this.restartTimer.Enabled = false;
                 }
             }).Start();
         }
@@ -460,6 +538,10 @@ namespace ValheimServerWarden
             //this.processRunning = false;
             this.players.Clear();
             OnServerExited(new ServerExitedEventArgs(this, this.process.ExitCode, this.intentionalExit));
+            if (scheduledRestart)
+            {
+                this.Start();
+            }
         }
         private void logMessage(string message, LogType logtype)
         {
@@ -515,6 +597,11 @@ namespace ValheimServerWarden
                 if (backupData.log != data.log)
                 {
                     OnUpdated(new UpdatedEventArgs("Log"));
+                }
+                if (backupData.restartHours != data.restartHours)
+                {
+                    OnUpdated(new UpdatedEventArgs("RestartHours"));
+
                 }
                 backupData = new ServerData();
                 inTxn = false;

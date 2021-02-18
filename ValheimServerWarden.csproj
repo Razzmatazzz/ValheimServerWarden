@@ -20,6 +20,9 @@
     <None Remove="Resources\Add_32x.png" />
     <None Remove="Resources\Cancel_32x.png" />
     <None Remove="Resources\Cancel_grey_32x.png" />
+    <None Remove="Resources\Connected_32x.png" />
+    <None Remove="Resources\Connect_32x.png" />
+    <None Remove="Resources\Connect_grey_32x.png" />
     <None Remove="Resources\Copy_32x.png" />
     <None Remove="Resources\ListView_32x.png" />
     <None Remove="Resources\Log_32x.png" />
@@ -29,6 +32,7 @@
     <None Remove="Resources\StartWithoutDebug_grey_32x.png" />
     <None Remove="Resources\Stop_32x.png" />
     <None Remove="Resources\Stop_grey_32x.png" />
+    <None Remove="Resources\Unconnected_32x.png" />
     <None Remove="Resources\vsw2.ico" />
     <None Remove="Resources\vsw2_256.png" />
   </ItemGroup>
@@ -69,6 +73,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Resources\Cancel_grey_32x.png" />
+    <Resource Include="Resources\Connected_32x.png" />
+    <Resource Include="Resources\Connect_32x.png" />
+    <Resource Include="Resources\Connect_grey_32x.png" />
     <Resource Include="Resources\Copy_32x.png" />
     <Resource Include="Resources\ListView_32x.png" />
     <Resource Include="Resources\Log_32x.png" />
@@ -86,6 +93,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Resources\Stop_grey_32x.png" />
+    <Resource Include="Resources\Unconnected_32x.png" />
     <Resource Include="Resources\vsw2_256.png" />
   </ItemGroup>
 

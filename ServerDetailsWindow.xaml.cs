@@ -1,9 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -26,7 +30,8 @@ namespace ValheimServerWarden
         public event EventHandler<ServerEventArgs> EditedServer;
         public event EventHandler<ServerEventArgs> ShowLog;
         private ValheimServer _server;
-        private ServerLogWindow _logWindow;
+        private string _steamPath;
+        private string _externalIP;
         public ValheimServer Server
         {
             get
@@ -69,42 +74,90 @@ namespace ValheimServerWarden
             });
             Server.Updated += Server_Updated;
             ServerToControls();
+            _steamPath = null;
+            try
+            {
+                string filePath = @"Program Files (x86)\Steam\steam.exe";
+                DriveInfo[] drives = DriveInfo.GetDrives();
+                foreach (DriveInfo drive in drives)
+                {
+                    string testpath = $@"{drive.Name}{filePath}";
+                    if (File.Exists(testpath))
+                    {
+                        _steamPath = testpath;
+                        RefreshControls();
+                        break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Error searching for Steam path");
+                Debug.WriteLine(ex);
+            }
+            GetExternalIP();
         }
 
         public void RefreshControls()
         {
             this.Dispatcher.Invoke(() =>
             {
-                Title = $"{this.Server.Name} Details";
-                lblPlayerCount.Content = this.Server.PlayerCount;
-                dgPlayers.ItemsSource = this.Server.Players;
-                dgPlayers.Items.Refresh();
-                ValheimServer.ServerStatus status = this.Server.Status;
-                lblStatus.Content = status;
-                if (Server.StartTime.Equals(new DateTime()))
+                try
                 {
-                    lblStartTime.Content = "N/A";
-                }else
-                {
-                    lblStartTime.Content = Server.StartTime.ToString();
-                }
+                    Title = $"{this.Server.Name} Details";
+                    lblPlayerCount.Content = this.Server.PlayerCount;
+                    dgPlayers.ItemsSource = this.Server.Players;
+                    dgPlayers.Items.Refresh();
+                    ValheimServer.ServerStatus status = this.Server.Status;
+                    lblStatus.Content = status;
+                    if (Server.StartTime.Equals(new DateTime()))
+                    {
+                        lblStartTime.Content = "N/A";
+                    }
+                    else
+                    {
+                        lblStartTime.Content = Server.StartTime.ToString();
+                    }
 
-                btnStop.IsEnabled = false;
-                btnStart.IsEnabled = false;
-                btnStop.Content = FindResource("StopGrey");
-                btnStart.Content = FindResource("StartGrey");
-                if (status == ValheimServer.ServerStatus.Running)
-                {
-                    btnStop.IsEnabled = true;
-                    btnStop.Content = FindResource("Stop");
+                    btnStop.IsEnabled = false;
+                    btnStart.IsEnabled = false;
+                    btnConnect.IsEnabled = false;
+                    btnStop.Content = FindResource("StopGrey");
+                    btnStart.Content = FindResource("StartGrey");
+                    btnConnect.Content = FindResource("ConnectGrey");
+                    if (status == ValheimServer.ServerStatus.Running)
+                    {
+                        btnStop.IsEnabled = true;
+                        btnStop.Content = FindResource("Stop");
+                        if (_steamPath != null)
+                        {
+                            btnConnect.IsEnabled = true;
+                            btnConnect.Content = FindResource("Connect");
+                        }
+                    }
+                    if (status == ValheimServer.ServerStatus.Stopped)
+                    {
+                        btnStart.IsEnabled = true;
+                        btnStart.Content = FindResource("Start");
+                    }
+                    btnLog.IsEnabled = (File.Exists(Server.GetLogName()));
+                    btnLog.Visibility = (File.Exists(Server.GetLogName())) ? Visibility.Visible : Visibility.Hidden;
+
+                    if (Server.RestartHours > 0)
+                    {
+                        chkAutoRestart.IsChecked = true;
+                        txtRestartInterval.Text = Server.RestartHours.ToString();
+                        txtRestartInterval.IsEnabled = true;
+                    } else
+                    {
+                        chkAutoRestart.IsChecked = false;
+                        txtRestartInterval.IsEnabled = false;
+                    }
                 }
-                if (status == ValheimServer.ServerStatus.Stopped)
+                catch (Exception ex)
                 {
-                    btnStart.IsEnabled = true;
-                    btnStart.Content = FindResource("Start");
+                    
                 }
-                btnLog.IsEnabled = (File.Exists(Server.GetLogName()));
-                btnLog.Visibility = (File.Exists(Server.GetLogName())) ? Visibility.Visible : Visibility.Hidden;
             });
         }
 
@@ -116,17 +169,43 @@ namespace ValheimServerWarden
 
         private void ServerToControls()
         {
-            txtName.Text = Server.Name;
-            txtPort.Text = Server.Port.ToString();
-            txtWorld.Text = Server.World;
-            txtPassword.Text = Server.Password;
-            txtSaveDir.Text = Server.SaveDir;
-            chkAutostart.IsChecked = Server.Autostart;
-            chkLog.IsChecked = Server.Log;
+            try
+            {
+                txtName.Text = Server.Name;
+                txtPort.Text = Server.Port.ToString();
+                txtWorld.Text = Server.World;
+                txtPassword.Text = Server.Password;
+                txtSaveDir.Text = Server.SaveDir;
+                chkAutostart.IsChecked = Server.Autostart;
+                chkLog.IsChecked = Server.Log;
+            }
+            catch (Exception ex)
+            {
+
+            }
+        }
+
+        private void GetExternalIP()
+        {
+            new Thread(() =>
+            {
+                Thread.CurrentThread.IsBackground = true;
+                try
+                {
+                    _externalIP = new WebClient().DownloadString("http://icanhazip.com");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("Error getting external IP.");
+                    Debug.WriteLine(ex);
+                }
+            }).Start();
         }
 
         private void btnStart_Click(object sender, RoutedEventArgs e)
         {
+            btnStart.IsEnabled = false;
+            btnStart.Content = FindResource("StartGrey");
             OnStarting(new ServerEventArgs(this.Server));
         }
         private void OnStarting(ServerEventArgs args)
@@ -152,6 +231,8 @@ namespace ValheimServerWarden
 
         private void btnStop_Click(object sender, RoutedEventArgs e)
         {
+            btnStop.IsEnabled = false;
+            btnStop.Content = FindResource("StopGrey");
             OnStopping(new ServerEventArgs(this.Server));
         }
 
@@ -160,17 +241,9 @@ namespace ValheimServerWarden
             OnShowLog(new ServerEventArgs(this.Server));
         }
 
-        private void _logWindow_Closed(object sender, EventArgs e)
-        {
-            _logWindow = null;
-        }
-
         private void Window_Closed(object sender, EventArgs e)
         {
-            if (_logWindow != null)
-            {
-                _logWindow.Close();
-            }
+            
         }
 
         private void btnSave_Click(object sender, RoutedEventArgs e)
@@ -207,8 +280,22 @@ namespace ValheimServerWarden
             }
             Server.Password = txtPassword.Text;
             Server.SaveDir = txtSaveDir.Text;
-            Server.Autostart = chkAutostart.IsChecked.HasValue ? chkAutostart.IsChecked.Value : false;
-            Server.Log = chkLog.IsChecked.HasValue ? chkLog.IsChecked.Value : false;
+            Server.Autostart = chkAutostart.IsChecked.GetValueOrDefault();
+            Server.Log = chkLog.IsChecked.GetValueOrDefault();
+            int restartHours = Server.RestartHours;
+            if (chkAutoRestart.IsChecked.GetValueOrDefault())
+            {
+                int.TryParse(txtRestartInterval.Text, out restartHours);
+            }
+            if (restartHours > -1)
+            {
+                Server.RestartHours = restartHours;
+            }
+            if (restartHours == 0)
+            {
+                txtRestartInterval.Text = "";
+                chkAutoRestart.IsChecked = false;
+            }
             OnEditedServer(new ServerEventArgs(this.Server));
             RefreshControls();
         }
@@ -263,6 +350,41 @@ namespace ValheimServerWarden
         {
             Player player = (Player)dgPlayers.SelectedItem;
             Clipboard.SetText(player.SteamID);
+        }
+
+        private void btnConnect_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (_steamPath != null)
+                {
+                    //Process.Start(_steamPath, $"steam://connect/127.0.0.1:{this.Server.Port + 1}");
+                    Process.Start(_steamPath, $"-applaunch 892970 +connect 127.0.0.1:{this.Server.Port} +password \"{this.Server.Password}\"");
+                }
+                else
+                {
+                    Debug.WriteLine("Steam path not found");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+            }
+        }
+
+        private void menuConnectLink_Click(object sender, RoutedEventArgs e)
+        {
+            Clipboard.SetText($"steam://connect/{_externalIP}:{this.Server.Port + 1}");
+        }
+
+        private void chkAutoRestart_Click(object sender, RoutedEventArgs e)
+        {
+            
+        }
+
+        private void chkAutoRestart_Checked(object sender, RoutedEventArgs e)
+        {
+            txtRestartInterval.IsEnabled = chkAutoRestart.IsChecked.GetValueOrDefault();
         }
     }
 }

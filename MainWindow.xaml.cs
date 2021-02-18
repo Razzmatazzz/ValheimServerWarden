@@ -155,29 +155,60 @@ namespace ValheimServerWarden
 
         private void CheckServerPath()
         {
-            string path = Properties.Settings.Default.ServerFilePath;
-            bool searchNeeded = true;
-            if (path.Length > 0 && File.Exists(path))
+            try
             {
-                searchNeeded = false;
-            }
-            if (searchNeeded)
-            {
-                logMessage("Valid path for Valheim dedicated server not set.");
-                string filePath = @"Program Files (x86)\Steam\steamapps\common\Valheim dedicated server\valheim_server.exe";
-                DriveInfo[] drives = DriveInfo.GetDrives();
-                foreach (DriveInfo drive in drives)
+                string path = Properties.Settings.Default.ServerFilePath;
+                bool searchNeeded = true;
+                if (path.Length > 0 && File.Exists(path))
                 {
-                    string testpath = $@"{drive.Name}{filePath}";
-                    if (File.Exists(testpath))
-                    {
-                        logMessage($"Dedicated server path found at {drive.Name}{filePath}");
-                        Properties.Settings.Default.ServerFilePath = drive.Name+filePath;
-                        Properties.Settings.Default.Save();
-                        return;
-                    }
+                    searchNeeded = false;
                 }
-                logMessage("Valid path for dedicated server not found. Please set manually in preferences.");
+                if (searchNeeded)
+                {
+                    logMessage("Valid path for Valheim dedicated server not set.");
+                    string steampath = @"Program Files (x86)\Steam\steam.exe";
+                    string fullSteamPath = "";
+                    string filePath = @"Program Files (x86)\Steam\steamapps\common\Valheim dedicated server\valheim_server.exe";
+                    bool serverfound = false;
+                    DriveInfo[] drives = DriveInfo.GetDrives();
+                    foreach (DriveInfo drive in drives)
+                    {
+                        if (File.Exists($@"{drive.Name}{steampath}"))
+                        {
+                            fullSteamPath = $@"{drive.Name}{steampath}";
+                        }
+                        string testpath = $@"{drive.Name}{filePath}";
+                        if (File.Exists(testpath))
+                        {
+                            logMessage($"Dedicated server path found at {drive.Name}{filePath}");
+                            Properties.Settings.Default.ServerFilePath = drive.Name + filePath;
+                            Properties.Settings.Default.Save();
+                            serverfound = true;
+                            break;
+                        }
+                    }
+                    if (!serverfound)
+                    {
+                        if (fullSteamPath != null)
+                        {
+                            var confirmResult = MessageBox.Show("VSW couldn't find the Valheim dedicated server installed, but it found Steam. Do you want to ask Steam to install the dedicated server?",
+                                         "Install dedicated server?", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+                            if (confirmResult == MessageBoxResult.Yes)
+                            {
+                                MessageBox.Show("Once the dedicated server finishes installing, restart this app and it will hopefully detect the dedicated server location.",
+                                         "Restart Required", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
+                                Process.Start(fullSteamPath, $"-applaunch 896660");
+                                logMessage("Please restart this app once the Valheim dedicated server finishes installing.");
+                                return;
+                            }
+                        }
+                    }
+                    logMessage("Valid path for dedicated server not found. Please set manually in preferences.");
+                }
+            }
+            catch (Exception ex)
+            {
+                logMessage($"Error checking for dedicated server path: {ex.Message}");
             }
         }
         private void btnServerPath_Click(object sender, RoutedEventArgs e)
@@ -190,7 +221,7 @@ namespace ValheimServerWarden
                 openFileDialog.InitialDirectory = (new FileInfo(filepath)).DirectoryName;
             }
             openFileDialog.Filter = "Server executable|valheim_server.exe";
-            openFileDialog.Title = "Select where valheim_server.exe is installed.";
+            openFileDialog.Title = "Select where valheim_server.exe is installed";
             System.Windows.Forms.DialogResult result = openFileDialog.ShowDialog();
             if (result == System.Windows.Forms.DialogResult.OK)
             {
@@ -698,7 +729,7 @@ namespace ValheimServerWarden
 
         private void dgServers_AutoGeneratingColumn(object sender, DataGridAutoGeneratingColumnEventArgs e)
         {
-            if (e.Column.Header.Equals("SaveDir") || e.Column.Header.Equals("Players") || e.Column.Header.Equals("Running") || e.Column.Header.Equals("StartTime") || e.Column.Header.Equals("PlayerList"))
+            if (e.Column.Header.Equals("SaveDir") || e.Column.Header.Equals("Players") || e.Column.Header.Equals("Running") || e.Column.Header.Equals("StartTime") || e.Column.Header.Equals("PlayerList") || e.Column.Header.Equals("RestartHours"))
             {
                 e.Cancel = true;
             }

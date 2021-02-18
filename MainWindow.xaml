@@ -26,12 +26,12 @@
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition/>
-            <RowDefinition Height="37"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <TabControl x:Name="tabsMain" Grid.Row="0">
             <TabItem Header="Servers">
-                <DataGrid x:Name="dgServers" Margin="0,0,0,0" CellEditEnding="dgServers_CellEditEnding" SelectionMode="Single" CanUserAddRows="False" RowEditEnding="dgServers_RowEditEnding" AutoGeneratingColumn="dgServers_AutoGeneratingColumn" BeginningEdit="dgServers_BeginningEdit" CanUserDeleteRows="False">
+                <DataGrid x:Name="dgServers" Margin="0" CellEditEnding="dgServers_CellEditEnding" SelectionMode="Single" CanUserAddRows="False" RowEditEnding="dgServers_RowEditEnding" AutoGeneratingColumn="dgServers_AutoGeneratingColumn" BeginningEdit="dgServers_BeginningEdit" CanUserDeleteRows="False">
                     <DataGrid.ContextMenu>
                         <ContextMenu>
                             <MenuItem x:Name="serversMenuAdd" Header="Add" Click="serversMenuAdd_Click">
@@ -73,18 +73,27 @@
             </TabItem>
             <TabItem Header="Settings">
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <!--ColumnDefinition Width="31*"/>
-            <ColumnDefinition Width="129*"/-->
-                    </Grid.ColumnDefinitions>
-                    <Label Content="Dedicated Server Location" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top"/>
-                    <TextBox x:Name="txtServerPath" Margin="80,41,10,0" TextWrapping="Wrap" VerticalAlignment="Top" Cursor="Arrow" IsReadOnly="True"/>
-                    <Button x:Name="btnServerPath" Content="Change" HorizontalAlignment="Left" Margin="10,41,0,0" VerticalAlignment="Top" Click="btnServerPath_Click"/>
-                    <Label x:Name="lblTheme" Content="Theme" HorizontalAlignment="Left" Margin="10,136,0,0" VerticalAlignment="Top"/>
-                    <RadioButton x:Name="radThemeLight" Content="Light" Margin="10,160,0,0" VerticalAlignment="Top" Width="108" GroupName="AppTheme" Checked="radThemeLight_Checked" RenderTransformOrigin="0.418,0.467"/>
-                    <RadioButton x:Name="radThemeDark" Content="Dark" Margin="135,160,0,0" GroupName="AppTheme" VerticalAlignment="Top" Checked="radThemeDark_Checked"/>
-                    <CheckBox x:Name="chkAutoCheckUpdate" Content="Automatically check for update" Margin="10,88,0,0" VerticalAlignment="Top" Click="chkAutoCheckUpdate_Click"/>
-                    <Button x:Name="btnUpdateCheck" Content="Check Now" Margin="251,88,0,0" VerticalAlignment="Top" Click="btnUpdateCheck_Click"/>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Button x:Name="btnServerPath" Content="Dedicated Server Path" HorizontalAlignment="Left" Margin="10,15,10,15" VerticalAlignment="Center" Click="btnServerPath_Click" Grid.Row="0" ToolTip="Path to valheim_server.exe"/>
+                    <TextBox x:Name="txtServerPath" Margin="170,15,10,15" TextWrapping="Wrap" VerticalAlignment="Center" IsReadOnly="True" Grid.Row="0"/>
+                    <Border Grid.Row="1" Width="Auto" HorizontalAlignment="Left" Margin="10,5,0,10" BorderThickness="1,1,1,1" BorderBrush="{DynamicResource {x:Static SystemColors.WindowFrameBrushKey}}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Label x:Name="lblTheme" Content="Theme" HorizontalAlignment="Stretch" Margin="10,5,10,5" VerticalAlignment="Center" Grid.Row="0"/>
+                            <RadioButton x:Name="radThemeLight" Content="Light" Margin="10,5,0,5" VerticalAlignment="Center" GroupName="AppTheme" Checked="radThemeLight_Checked" Grid.Row="1"/>
+                            <RadioButton x:Name="radThemeDark" Content="Dark" Margin="135,5,0,5" GroupName="AppTheme" VerticalAlignment="Top" Checked="radThemeDark_Checked" Grid.Row="1"/>
+                        </Grid>
+                    </Border>
+                    <CheckBox x:Name="chkAutoCheckUpdate" Content="Automatically check for update" Margin="10,5,0,5" VerticalAlignment="Center" Click="chkAutoCheckUpdate_Click" Grid.Row="2"/>
+                    <Button x:Name="btnUpdateCheck" Content="Check Now" Margin="251,5,0,5" VerticalAlignment="Center" Click="btnUpdateCheck_Click" Grid.Row="2"/>
 
                 </Grid>
             </TabItem>
@@ -92,9 +101,9 @@
                 <RichTextBox x:Name="txtLog"></RichTextBox>
             </TabItem>
         </TabControl>
-        <StatusBar x:Name="statusbarMain" VerticalAlignment="Bottom" Height="37" Grid.Row="1">
+        <StatusBar x:Name="statusbarMain" VerticalAlignment="Bottom" Grid.Row="1">
             <StatusBarItem>
-                <Label x:Name="lblLastMessage"></Label>
+                <Label x:Name="lblLastMessage" Margin="5"></Label>
             </StatusBarItem>
         </StatusBar>
 
