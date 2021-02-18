@@ -93,7 +93,7 @@
                 <Label x:Name="lblStatus" Content="" HorizontalAlignment="Left" Margin="0" VerticalAlignment="Center" Grid.Row="0" Grid.Column="1"/>
                 <Label Content="Start time:" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Center" Grid.Row="1" Grid.Column="0"/>
                 <Label x:Name="lblStartTime" Content="" HorizontalAlignment="Left" Margin="0" VerticalAlignment="Center" Grid.Row="1" Grid.Column="1"/>
-                <Separator Height="3" Margin="10,62,10,0" VerticalAlignment="Top" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"/>
+                <Separator Height="3" Margin="10,0,10,0" VerticalAlignment="Top" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"/>
                 <Label Content="Server Name" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Center" Grid.Row="3" Grid.Column="0"/>
                 <TextBox x:Name="txtName" TextWrapping="Wrap" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="3" Grid.Column="1"/>
                 <Label Content="Port" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Center" Grid.Row="4" Grid.Column="0"/>

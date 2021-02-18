@@ -871,20 +871,25 @@ namespace ValheimServerWarden
 
                     this.Dispatcher.Invoke(() =>
                     {
-                        //do stuff in here with the interface
-                        if (localVersion.CompareTo(remoteVersion) == -1)
+                        try
                         {
-                            var confirmResult = MessageBox.Show("There is a new version available. Would you like to open the download page?",
-                                     "Update Available", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
-                            if (confirmResult == MessageBoxResult.Yes)
+                            if (localVersion.CompareTo(remoteVersion) == -1)
                             {
-                                Process.Start("https://github.com/Razzmatazzz/ValheimServerWarden/releases/latest");
-                                System.Environment.Exit(1);
+                                var confirmResult = MessageBox.Show("There is a new version available. Would you like to open the download page?",
+                                         "Update Available", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+                                if (confirmResult == MessageBoxResult.Yes)
+                                {
+                                    Process.Start("cmd", "/C start https://github.com/Razzmatazzz/ValheimServerWarden/releases/latest");
+                                }
+                            }
+                            else
+                            {
+                                //logMessage("No new version found.");
                             }
                         }
-                        else
+                        catch (Exception ex)
                         {
-                            //logMessage("No new version found.");
+                            logMessage($"Error navigating to new version web page: {ex.Message}", LogType.Error);
                         }
                     });
                 }
