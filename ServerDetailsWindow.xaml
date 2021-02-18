@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         xmlns:ui="http://schemas.modernwpf.com/2019"
         ui:WindowHelper.UseModernWindowStyle="True"
-        Title="ServerDetailsWindow" Height="450" Width="800" Closed="Window_Closed">
+        Title="ServerDetailsWindow" Height="Auto" Width="800" Closed="Window_Closed" SizeToContent="Height">
     <Window.Resources>
         <Image x:Key="Start" Source="Resources/StartWithoutDebug_32x.png"/>
         <Image x:Key="StartGrey" Source="Resources/StartWithoutDebug_grey_32x.png"/>
@@ -60,8 +60,18 @@
                                     <Image Source="Resources/Connected_32x.png"/>
                                 </MenuItem.Icon>
                             </MenuItem>
+                            <MenuItem x:Name="menuConnectCheckExternal" Header="Check external connectivity" Click="menuConnectCheckExternal_Click">
+                                <MenuItem.Icon>
+                                    <Image Source="Resources/QuickFind_32x.png"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
                         </ContextMenu>
                     </Button.ContextMenu>
+                </Button>
+                <Button x:Name="btnDiscordWebhook" ToolTip="Set Discord webhook to report server events" Width="Auto" Margin="5" VerticalAlignment="Top" Grid.Column="4" Click="btnDiscordWebhook_Click">
+                    <Button.Content>
+                        <Image Source="Resources/Discord_32x.png"/>
+                    </Button.Content>
                 </Button>
             </Grid>
         </Grid>
@@ -119,7 +129,7 @@
                 <CheckBox x:Name="chkAutoRestart" Content="Restart every" Margin="5,5,0,5" VerticalAlignment="Center" Grid.Row="9" Grid.ColumnSpan="2" ToolTip="Automatically restart the server once it's been up for this amount of time if there are no players connected" Checked="chkAutoRestart_Checked" Unchecked="chkAutoRestart_Checked"/>
                 <TextBox x:Name="txtRestartInterval" HorizontalAlignment="Left" Margin="125,5,0,5" TextWrapping="Wrap" VerticalAlignment="Center" Grid.Row="9" Grid.ColumnSpan="2" Width="58" IsEnabled="False"/>
                 <Label Content="hours" HorizontalAlignment="Left" Margin="200,0,0,0" VerticalAlignment="Center" Grid.Row="9" Grid.ColumnSpan="2"/>
-                <Button x:Name="btnSave" Content="Save" Margin="0,0,10,0" HorizontalAlignment="Right" VerticalAlignment="Center" Click="btnSave_Click" Grid.Row="10" Grid.Column="1"/>
+                <Button x:Name="btnSave" Content="Save" Margin="10,10,0,10" HorizontalAlignment="Left" VerticalAlignment="Center" Click="btnSave_Click" Grid.Row="10" Grid.Column="0"/>
             </Grid>
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"/>
             <Grid Grid.Column="2">

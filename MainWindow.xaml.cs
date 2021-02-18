@@ -729,7 +729,15 @@ namespace ValheimServerWarden
 
         private void dgServers_AutoGeneratingColumn(object sender, DataGridAutoGeneratingColumnEventArgs e)
         {
-            if (e.Column.Header.Equals("SaveDir") || e.Column.Header.Equals("Players") || e.Column.Header.Equals("Running") || e.Column.Header.Equals("StartTime") || e.Column.Header.Equals("PlayerList") || e.Column.Header.Equals("RestartHours"))
+            if (e.Column.Header.Equals("SaveDir") || 
+                e.Column.Header.Equals("Players") || 
+                e.Column.Header.Equals("Running") || 
+                e.Column.Header.Equals("StartTime") || 
+                e.Column.Header.Equals("PlayerList") || 
+                e.Column.Header.Equals("RestartHours") || 
+                e.Column.Header.Equals("DiscordWebhook") ||
+                e.Column.Header.Equals("DefaultWebhookMessages") ||
+                e.Column.Header.Equals("DiscordWebhookMessages"))
             {
                 e.Cancel = true;
             }
@@ -765,10 +773,6 @@ namespace ValheimServerWarden
                     if (!editing)
                     {
                         dgServers.Items.Refresh();
-                        foreach (DataGridColumn column in dgServers.Columns)
-                        {
-                            column.Width = DataGridLength.Auto;
-                        }
                     }
                 }
                 catch (Exception ex)

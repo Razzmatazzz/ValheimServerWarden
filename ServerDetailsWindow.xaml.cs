@@ -32,6 +32,8 @@ namespace ValheimServerWarden
         private ValheimServer _server;
         private string _steamPath;
         private string _externalIP;
+        private DiscordWebhookWindow _webhookwin;
+        private bool _webhookwinclosed;
         public ValheimServer Server
         {
             get
@@ -44,6 +46,9 @@ namespace ValheimServerWarden
             InitializeComponent();
             this._server = server;
             RefreshControls();
+            _webhookwin = new DiscordWebhookWindow(server);
+            _webhookwinclosed = false;
+            _webhookwin.Closed += _webhookwin_Closed;
             this.Server.Exited += ((object sender, ServerExitedEventArgs e) =>
             {
                 RefreshControls();
@@ -96,6 +101,11 @@ namespace ValheimServerWarden
                 Debug.WriteLine(ex);
             }
             GetExternalIP();
+        }
+
+        private void _webhookwin_Closed(object sender, EventArgs e)
+        {
+            this._webhookwinclosed = true;
         }
 
         public void RefreshControls()
@@ -243,7 +253,11 @@ namespace ValheimServerWarden
 
         private void Window_Closed(object sender, EventArgs e)
         {
-            
+            if (!_webhookwinclosed)
+            {
+                _webhookwin.Close();
+                _webhookwin = null;
+            }
         }
 
         private void btnSave_Click(object sender, RoutedEventArgs e)
@@ -385,6 +399,23 @@ namespace ValheimServerWarden
         private void chkAutoRestart_Checked(object sender, RoutedEventArgs e)
         {
             txtRestartInterval.IsEnabled = chkAutoRestart.IsChecked.GetValueOrDefault();
+        }
+
+        private void btnDiscordWebhook_Click(object sender, RoutedEventArgs e)
+        {
+            if (_webhookwinclosed)
+            {
+                _webhookwin = null;
+                _webhookwin = new DiscordWebhookWindow(this.Server);
+                _webhookwin.Closed += _webhookwin_Closed;
+            }
+            _webhookwin.Show();
+            _webhookwinclosed = false;
+        }
+
+        private void menuConnectCheckExternal_Click(object sender, RoutedEventArgs e)
+        {
+            Process.Start("cmd", $"/C start https://southnode.net/form_get.php?ip={_externalIP}");
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Text;
 using System.ComponentModel;
@@ -32,6 +33,7 @@ namespace ValheimServerWarden
             internal bool autostart;
             internal bool log;
             internal int restartHours;
+            internal string discordWebhook;
         }
         public event EventHandler<UpdatedEventArgs> Updated;
         public event EventHandler<FailedPasswordEventArgs> FailedPassword;
@@ -70,6 +72,7 @@ namespace ValheimServerWarden
         private string serverExe = "valheim_server.exe";
         private bool testMode = false;
         private ServerData data;
+        private Dictionary<string,string> _discordWebhookMesssages;
         private ServerData backupData;
         private Process process;
         private PlayerList players;
@@ -81,6 +84,14 @@ namespace ValheimServerWarden
         private bool scheduledRestart;
         private System.Timers.Timer restartTimer;
         private bool inTxn = false;
+
+        private static Dictionary<string,string> _discordWebhookDefaultMessages = new Dictionary<string,string> {
+            {"OnFailedPassword", "User with SteamID {Player.SteamID} tried to join with an invalid password." },
+            {"OnPlayerConnected", "{Player.Name} has entered the fray!" },
+            {"OnPlayerDisconnected", "{Player.Name} has departed." },
+            {"OnPlayerDied", "{Player.Name} met an untimely demise." },
+            {"OnRandomServerEvent", "An {EventName} attack is underway!" }
+        };
 
         public string Name
         {
@@ -180,6 +191,28 @@ namespace ValheimServerWarden
                 }
             }
         }
+        public string DiscordWebhook
+        {
+            get
+            {
+                return this.data.discordWebhook;
+            }
+            set
+            {
+                this.data.discordWebhook = value;
+            }
+        }
+        public Dictionary<string,string> DiscordWebhookMessages
+        {
+            get
+            {
+                return this._discordWebhookMesssages;
+            }
+            set
+            {
+                this._discordWebhookMesssages = value;
+            }
+        }
         [JsonIgnore]
         public bool Running
         {
@@ -226,7 +259,15 @@ namespace ValheimServerWarden
         {
             get { return this.startTime; }
         }
-        public ValheimServer(string name, int port, string world, string password, bool autostart, bool log, int restarthours)
+        [JsonIgnore]
+        public Dictionary<string,string> DefaultWebhookMessages
+        {
+            get
+            {
+                return _discordWebhookDefaultMessages;
+            }
+        }
+        public ValheimServer(string name, int port, string world, string password, bool autostart, bool log, int restarthours, string discordwebhook, Dictionary<string,string> discordmessages)
         {
             this.data.name = name;
             this.data.port = 2456;
@@ -236,6 +277,8 @@ namespace ValheimServerWarden
             this.data.autostart = autostart;
             this.data.log = log;
             this.data.restartHours = restarthours;
+            this.data.discordWebhook = discordwebhook;
+            this._discordWebhookMesssages = discordmessages;
 
             this.process = new Process();
             this.process.StartInfo.EnvironmentVariables["SteamAppId"] = "892970";
@@ -271,11 +314,11 @@ namespace ValheimServerWarden
             }
         }
 
-        public ValheimServer() : this("My Server", 2456, "Dedicated", "Secret", false, false, 0)
+        public ValheimServer() : this("My Server", 2456, "Dedicated", "Secret", false, false, 0, null, new Dictionary<string,string>())
         {
         }
 
-        public ValheimServer(string name) : this(name, 2456, "Dedicated", "Secret", false, false, 0)
+        public ValheimServer(string name) : this(name, 2456, "Dedicated", "Secret", false, false, 0, null, new Dictionary<string,string>())
         {
 
         }
@@ -294,6 +337,58 @@ namespace ValheimServerWarden
             //DateTime restartTime = this.startTime.AddMinutes(1);
             TimeSpan ts = restartTime - this.startTime;
             return ts.TotalMilliseconds;
+        }
+
+        public string GetWebhookMessage(string EventName)
+        {
+            if (this.DiscordWebhookMessages.ContainsKey(EventName))
+            {
+                return this.DiscordWebhookMessages[EventName];
+            }
+            else if (_discordWebhookDefaultMessages.ContainsKey(EventName))
+            {
+                return _discordWebhookDefaultMessages[EventName];
+            }
+            return null;
+        }
+
+        public void SendDiscordWebhook(string EventName, Player player, string serverEventName)
+        {
+            string message = GetWebhookMessage(EventName);
+            if (message == "") return;
+            message = message.Replace("{Server.Name}", this.Name);
+            message = message.Replace("{Server.PlayerCount}", this.PlayerCount.ToString());
+            if (player != null)
+            {
+                message = message.Replace("{Player.Name}", player.Name);
+                message = message.Replace("{Player}", player.Name);
+                message = message.Replace("{Player.SteamID}", player.SteamID);
+                message = message.Replace("{SteamID}", player.SteamID);
+                message = message.Replace("{Player.Deaths}", player.Deaths.ToString());
+                message = message.Replace("{Player.JoinTime}", player.JoinTime.ToString());
+            }
+            if (serverEventName != null)
+            {
+                message = message.Replace("{EventName}", serverEventName);
+            }
+            SendDiscordWebhook(message);
+        }
+        public void SendDiscordWebhook(string EventName, Player player)
+        {
+            SendDiscordWebhook(EventName, player, null);
+        }
+        public void SendDiscordWebhook(string message)
+        {
+            if (this.DiscordWebhook != null && this.DiscordWebhook != "")
+            {
+                using (DiscordWebhook webhook = new DiscordWebhook())
+                {
+                    //webhook.ProfilePicture = "https://static.giantbomb.com/uploads/original/4/42381/1196379-gas_mask_respirator.jpg";
+                    //webhook.UserName = "Bot";
+                    webhook.WebHook = this.DiscordWebhook;
+                    webhook.SendMessage(message);
+                }
+            }
         }
 
         private void Process_OutputDataReceived(object sender, DataReceivedEventArgs e)
@@ -344,6 +439,7 @@ namespace ValheimServerWarden
                     this.players.Add(player);
                     this.connectingSteamID = null;
                     OnPlayerConnected(new PlayerEventArgs(this, player));
+                    this.SendDiscordWebhook($"{player.Name} has entered the fray!");
                 }
                 else if (match.Groups[2].ToString().Equals("0:0"))
                 {
@@ -353,6 +449,7 @@ namespace ValheimServerWarden
                         {
                             player.Deaths++;
                             OnPlayerDied(new PlayerEventArgs(this, player));
+                            this.SendDiscordWebhook($"{player.Name} met an untimely demise.");
                             break;
                         }
                     }
@@ -373,6 +470,7 @@ namespace ValheimServerWarden
                     {
                         this.players.Remove(player);
                         OnPlayerDisconnected(new PlayerEventArgs(this, player));
+                        this.SendDiscordWebhook($"{player.Name} has departed.");
                         if (this.needsRestart && this.PlayerCount == 0)
                         {
                             scheduledRestart = true;
@@ -626,21 +724,53 @@ namespace ValheimServerWarden
         }
         private void OnFailedPassword(FailedPasswordEventArgs args)
         {
+            try
+            {
+                SendDiscordWebhook(System.Reflection.MethodBase.GetCurrentMethod().Name, new Player("Unknown", args.SteamID));
+            }
+            catch (Exception ex)
+            {
+                logMessage($"Error sending Webhook for failed password attempt: {ex.Message}", LogType.Error);
+            }
             EventHandler<FailedPasswordEventArgs> handler = FailedPassword;
             if (null != handler) handler(this, args);
         }
         private void OnPlayerConnected(PlayerEventArgs args)
         {
+            try
+            {
+                SendDiscordWebhook(System.Reflection.MethodBase.GetCurrentMethod().Name, args.Player);
+            }
+            catch (Exception ex)
+            {
+                logMessage($"Error sending Webhook for player connected: {ex.Message}", LogType.Error);
+            }
             EventHandler<PlayerEventArgs> handler = PlayerConnected;
             if (null != handler) handler(this, args);
         }
         private void OnPlayerDisconnected(PlayerEventArgs args)
         {
+            try
+            {
+                SendDiscordWebhook(System.Reflection.MethodBase.GetCurrentMethod().Name, args.Player);
+            }
+            catch (Exception ex)
+            {
+                logMessage($"Error sending Webhook for player disconnected: {ex.Message}", LogType.Error);
+            }
             EventHandler<PlayerEventArgs> handler = PlayerDisconnected;
             if (null != handler) handler(this, args);
         }
         private void OnPlayerDied(PlayerEventArgs args)
         {
+            try
+            {
+                SendDiscordWebhook(System.Reflection.MethodBase.GetCurrentMethod().Name, args.Player);
+            }
+            catch (Exception ex)
+            {
+                logMessage($"Error sending Webhook for player death: {ex.Message}", LogType.Error);
+            }
             EventHandler<PlayerEventArgs> handler = PlayerDied;
             if (null != handler) handler(this, args);
         }
@@ -651,6 +781,14 @@ namespace ValheimServerWarden
         }
         private void OnRandomServerEvent(RandomServerEventArgs args)
         {
+            try
+            {
+                SendDiscordWebhook(System.Reflection.MethodBase.GetCurrentMethod().Name, null, args.EventName);
+            }
+            catch (Exception ex)
+            {
+                logMessage($"Error sending Webhook for random server event: {ex.Message}", LogType.Error);
+            }
             EventHandler<RandomServerEventArgs> handler = RandomServerEvent;
             if (null != handler) handler(this, args);
         }

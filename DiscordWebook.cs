@@ -26,6 +26,7 @@ namespace ValheimServerWarden
         {
             discordValues.Add("username", UserName);
             discordValues.Add("avatar_url", ProfilePicture);
+            discordValues.Remove("content");
             discordValues.Add("content", msgSend);
 
             dWebClient.UploadValues(WebHook, discordValues);
