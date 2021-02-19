@@ -86,6 +86,7 @@ namespace ValheimServerWarden
         private bool inTxn = false;
 
         private static Dictionary<string,string> _discordWebhookDefaultMessages = new Dictionary<string,string> {
+            {"OnStarted", "Server {Server.Name} has started." },
             {"OnFailedPassword", "User with SteamID {Player.SteamID} tried to join with an invalid password." },
             {"OnPlayerConnected", "{Player.Name} has entered the fray!" },
             {"OnPlayerDisconnected", "{Player.Name} has departed." },
@@ -439,7 +440,6 @@ namespace ValheimServerWarden
                     this.players.Add(player);
                     this.connectingSteamID = null;
                     OnPlayerConnected(new PlayerEventArgs(this, player));
-                    this.SendDiscordWebhook($"{player.Name} has entered the fray!");
                 }
                 else if (match.Groups[2].ToString().Equals("0:0"))
                 {
@@ -449,7 +449,6 @@ namespace ValheimServerWarden
                         {
                             player.Deaths++;
                             OnPlayerDied(new PlayerEventArgs(this, player));
-                            this.SendDiscordWebhook($"{player.Name} met an untimely demise.");
                             break;
                         }
                     }
@@ -470,7 +469,6 @@ namespace ValheimServerWarden
                     {
                         this.players.Remove(player);
                         OnPlayerDisconnected(new PlayerEventArgs(this, player));
-                        this.SendDiscordWebhook($"{player.Name} has departed.");
                         if (this.needsRestart && this.PlayerCount == 0)
                         {
                             scheduledRestart = true;
@@ -804,6 +802,14 @@ namespace ValheimServerWarden
         }
         private void OnStarted(ServerEventArgs args)
         {
+            try
+            {
+                SendDiscordWebhook(System.Reflection.MethodBase.GetCurrentMethod().Name, null, null);
+            }
+            catch (Exception ex)
+            {
+                logMessage($"Error sending Webhook for server start: {ex.Message}", LogType.Error);
+            }
             EventHandler<ServerEventArgs> handler = Started;
             if (null != handler) handler(this, args);
         }

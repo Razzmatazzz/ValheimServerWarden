@@ -47,6 +47,7 @@ namespace ValheimServerWarden
             messageControls.Add(OnPlayerDied);
             messageControls.Add(OnFailedPassword);
             messageControls.Add(OnRandomServerEvent);
+            messageControls.Add(OnStarted);
             foreach (TextBox textBox in messageControls)
             {
                 textBox.Text = server.GetWebhookMessage(textBox.Name);
@@ -121,6 +122,11 @@ namespace ValheimServerWarden
                     }
                 }
             }
+        }
+
+        private void btnTestServerStarted_Click(object sender, RoutedEventArgs e)
+        {
+            _server.SendDiscordWebhook(OnStarted.Name, null, null);
         }
     }
 }
