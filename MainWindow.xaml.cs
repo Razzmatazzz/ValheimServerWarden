@@ -101,6 +101,7 @@ namespace ValheimServerWarden
             RefreshDataGrid();
             serverDetailWindows = new List<ServerDetailsWindow>();
             serverLogWindows = new List<ServerLogWindow>();
+            checkForRunningServers();
         }
 
         private void NotifyIcon_Click(object sender, EventArgs e)
@@ -191,11 +192,13 @@ namespace ValheimServerWarden
                     {
                         if (fullSteamPath != null)
                         {
-                            var confirmResult = MessageBox.Show("VSW couldn't find the Valheim dedicated server installed, but it found Steam. Do you want to ask Steam to install the dedicated server?",
+                            var mmb = new ModernMessageBox(this);
+                            var confirmResult = mmb.Show("VSW couldn't find the Valheim dedicated server installed, but it found Steam. Do you want to ask Steam to install the dedicated server?",
                                          "Install dedicated server?", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
                             if (confirmResult == MessageBoxResult.Yes)
                             {
-                                MessageBox.Show("Once the dedicated server finishes installing, restart this app and it will hopefully detect the dedicated server location.",
+                                mmb = new ModernMessageBox(this);
+                                mmb.Show("Once the dedicated server finishes installing, restart this app and it will hopefully detect the dedicated server location.",
                                          "Restart Required", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
                                 Process.Start(fullSteamPath, $"-applaunch 896660");
                                 logMessage("Please restart this app once the Valheim dedicated server finishes installing.");
@@ -232,7 +235,8 @@ namespace ValheimServerWarden
                 }
                 if (!File.Exists(fileName))
                 {
-                    MessageBox.Show("Please select the location of valheim_server.exe.",
+                    var mmb = new ModernMessageBox(this);
+                    mmb.Show("Please select the location of valheim_server.exe.",
                                      "Invalid Folder", MessageBoxButton.OK, MessageBoxImage.Warning, MessageBoxResult.OK);
                     return;
                 }
@@ -478,9 +482,9 @@ namespace ValheimServerWarden
         {
             try
             {
+                ValheimServer server = (ValheimServer)e.Row.Item;
                 if (e.Column.Header.Equals("Name"))
                 {
-                    ValheimServer server = (ValheimServer)e.Row.Item;
                     string newName = ((TextBox)e.EditingElement).Text;
                     foreach (ValheimServer s in servers)
                     {
@@ -495,10 +499,16 @@ namespace ValheimServerWarden
                 else if (e.Column.Header.Equals("Password"))
                 {
                     string newPass = ((TextBox)e.EditingElement).Text;
-                    if (newPass.Length != 0 && newPass.Length < 5)
+                    if (newPass.Length < 5)
                     {
-                        logMessage("Passwords must be at least 5 characters long.", LogType.Error);
-                        ((TextBox)e.EditingElement).Text = ((ValheimServer)e.Row.Item).Password;
+                        logMessage("Passwords are required and must be at least 5 characters long.", LogType.Error);
+                        ((TextBox)e.EditingElement).Text = server.Password;
+                        e.Cancel = true;
+                        return;
+                    }
+                    else if (server.World.Contains(newPass)) {
+                        logMessage("Your password cannot be contained in your World name.", LogType.Error);
+                        ((TextBox)e.EditingElement).Text = server.Password;
                         e.Cancel = true;
                         return;
                     }
@@ -737,7 +747,8 @@ namespace ValheimServerWarden
                 e.Column.Header.Equals("RestartHours") || 
                 e.Column.Header.Equals("DiscordWebhook") ||
                 e.Column.Header.Equals("DefaultWebhookMessages") ||
-                e.Column.Header.Equals("DiscordWebhookMessages"))
+                e.Column.Header.Equals("DiscordWebhookMessages") ||
+                e.Column.Header.Equals("Public"))
             {
                 e.Cancel = true;
             }
@@ -786,7 +797,8 @@ namespace ValheimServerWarden
         private void serversMenuRemove_Click(object sender, RoutedEventArgs e)
         {
             ValheimServer server = (ValheimServer)dgServers.SelectedItem;
-            var confirmResult = MessageBox.Show($"Are you sure you want to remove {server.Name}?",
+            var mmb = new ModernMessageBox(this);
+            var confirmResult = mmb.Show($"Are you sure you want to remove {server.Name}?",
                                      "Remove Server", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
             if (confirmResult == MessageBoxResult.Yes)
             {
@@ -879,7 +891,8 @@ namespace ValheimServerWarden
                         {
                             if (localVersion.CompareTo(remoteVersion) == -1)
                             {
-                                var confirmResult = MessageBox.Show("There is a new version available. Would you like to open the download page?",
+                                var mmb = new ModernMessageBox(this);
+                                var confirmResult = mmb.Show("There is a new version available. Would you like to open the download page?",
                                          "Update Available", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
                                 if (confirmResult == MessageBoxResult.Yes)
                                 {
@@ -937,7 +950,6 @@ namespace ValheimServerWarden
                 }
                 ServerDetailsWindow window = new ServerDetailsWindow(server);
                 this.serverDetailWindows.Add(window);
-                window.WindowStartupLocation = WindowStartupLocation.CenterOwner;
                 window.Closed += ((object sender, EventArgs e) =>
                 {
                     this.serverDetailWindows.Remove(window);
@@ -1008,6 +1020,21 @@ namespace ValheimServerWarden
             catch (Exception ex)
             {
                 logMessage($"Error showing server log: {ex.Message}", LogType.Error);
+            }
+        }
+        private void checkForRunningServers()
+        {
+            Process[] servers = Process.GetProcessesByName("valheim_server");
+            if (servers.Length > 0)
+            {
+                var mmb = new ModernMessageBox(this);
+                MessageBoxResult confirmResult = mmb.Show($"There are already {servers.Length} Valheim dedicated servers running. Do you want to shut them down to manage them here?",
+                                     "Servers Running", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+                if (confirmResult == MessageBoxResult.Yes)
+                {
+                    ValheimServer.TerminateAll(servers);
+                    return;
+                }
             }
         }
     }

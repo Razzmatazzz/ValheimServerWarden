@@ -27,13 +27,10 @@ namespace ValheimServerWarden
         public DiscordWebhookWindow(ValheimServer server)
         {
             InitializeComponent();
+            WindowStartupLocation = WindowStartupLocation.CenterOwner;
             _server = server;
+
             txtWebhook.Text = _server.DiscordWebhook;
-            /*OnPlayerConnected.Text = server.GetWebhookMessage(OnPlayerConnected.Name);
-            OnPlayerDisconnected.Text = server.GetWebhookMessage(OnPlayerDisconnected.Name);
-            OnPlayerDied.Text = server.GetWebhookMessage(OnPlayerDied.Name);
-            OnFailedPassword.Text = server.GetWebhookMessage(OnFailedPassword.Name);
-            OnRandomServerEvent.Text = server.GetWebhookMessage(OnRandomServerEvent.Name);*/
 
             ContextMenu contextMenu = new ContextMenu();
             MenuItem defaultMenu = new MenuItem();
@@ -48,6 +45,7 @@ namespace ValheimServerWarden
             messageControls.Add(OnFailedPassword);
             messageControls.Add(OnRandomServerEvent);
             messageControls.Add(OnStarted);
+            messageControls.Add(OnServerExited);
             foreach (TextBox textBox in messageControls)
             {
                 textBox.Text = server.GetWebhookMessage(textBox.Name);
@@ -64,20 +62,6 @@ namespace ValheimServerWarden
         private void DefaultMenu_Click(object sender, RoutedEventArgs e)
         {
             clickedTextBox.Text = _server.DefaultWebhookMessages[clickedTextBox.Name];
-        }
-
-        private void btnTest_Click(object sender, RoutedEventArgs e)
-        {
-            //_server.SendDiscordWebhook($"Ahoy from {_server.Name}");
-            string wh = txtWebhook.Text;
-            if (wh != null && wh != "")
-            {
-                using (DiscordWebhook webhook = new DiscordWebhook())
-                {
-                    webhook.WebHook = wh;
-                    webhook.SendMessage($"Ahoy from {_server.Name}");
-                }
-            }
         }
 
         private void btnTestConnected_Click(object sender, RoutedEventArgs e)
@@ -110,11 +94,11 @@ namespace ValheimServerWarden
             _server.DiscordWebhook = txtWebhook.Text;
             foreach (TextBox textBox in messageControls)
             {
-                if (textBox.Text != null && textBox.Text != this._server.DefaultWebhookMessages[textBox.Name])
+                if (textBox.Text != null && _server.DefaultWebhookMessages.ContainsKey(textBox.Name) && textBox.Text != this._server.DefaultWebhookMessages[textBox.Name])
                 {
                     _server.DiscordWebhookMessages[textBox.Name] = textBox.Text;
                 }
-                else if (textBox.Text == this._server.DefaultWebhookMessages[textBox.Name])
+                else if (_server.DefaultWebhookMessages.ContainsKey(textBox.Name) && textBox.Text == this._server.DefaultWebhookMessages[textBox.Name])
                 {
                     if (_server.DiscordWebhookMessages.ContainsKey(textBox.Name))
                     {
@@ -122,11 +106,23 @@ namespace ValheimServerWarden
                     }
                 }
             }
+            DialogResult = true;
+            Close();
         }
 
         private void btnTestServerStarted_Click(object sender, RoutedEventArgs e)
         {
             _server.SendDiscordWebhook(OnStarted.Name, null, null);
+        }
+
+        private void btnTestServerStopped_Click(object sender, RoutedEventArgs e)
+        {
+            _server.SendDiscordWebhook(OnStarted.Name, null, null);
+        }
+
+        private void btnCancel_Click(object sender, RoutedEventArgs e)
+        {
+            Close();
         }
     }
 }

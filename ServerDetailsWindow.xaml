@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         xmlns:ui="http://schemas.modernwpf.com/2019"
         ui:WindowHelper.UseModernWindowStyle="True"
-        Title="ServerDetailsWindow" Height="Auto" Width="800" Closed="Window_Closed" SizeToContent="Height">
+        Title="ServerDetailsWindow" Height="Auto" Width="800" SizeToContent="Height">
     <Window.Resources>
         <Image x:Key="Start" Source="Resources/StartWithoutDebug_32x.png"/>
         <Image x:Key="StartGrey" Source="Resources/StartWithoutDebug_grey_32x.png"/>
@@ -94,6 +94,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="100"/>
@@ -124,12 +125,13 @@
                         </ContextMenu>
                     </TextBox.ContextMenu>
                 </TextBox>
-                <CheckBox x:Name="chkAutostart" Content="Autostart" Margin="5,5,0,5" VerticalAlignment="Top" Grid.Row="8" Grid.Column="0" ToolTip="Start server automatically on app start"/>
-                <CheckBox x:Name="chkLog" Content="Create server log file" Margin="0,5,0,5" VerticalAlignment="Top" Grid.Row="8" Grid.Column="1"/>
-                <CheckBox x:Name="chkAutoRestart" Content="Restart every" Margin="5,5,0,5" VerticalAlignment="Center" Grid.Row="9" Grid.ColumnSpan="2" ToolTip="Automatically restart the server once it's been up for this amount of time if there are no players connected" Checked="chkAutoRestart_Checked" Unchecked="chkAutoRestart_Checked"/>
-                <TextBox x:Name="txtRestartInterval" HorizontalAlignment="Left" Margin="125,5,0,5" TextWrapping="Wrap" VerticalAlignment="Center" Grid.Row="9" Grid.ColumnSpan="2" Width="58" IsEnabled="False"/>
-                <Label Content="hours" HorizontalAlignment="Left" Margin="200,0,0,0" VerticalAlignment="Center" Grid.Row="9" Grid.ColumnSpan="2"/>
-                <Button x:Name="btnSave" Content="Save" Margin="10,10,0,10" HorizontalAlignment="Left" VerticalAlignment="Center" Click="btnSave_Click" Grid.Row="10" Grid.Column="0"/>
+                <CheckBox x:Name="chkPublic" Content="Public" Margin="5,5,0,5" VerticalAlignment="Top" Grid.Row="8" Grid.Column="0" ToolTip="Whether server is listed in the in-game community server list"/>
+                <CheckBox x:Name="chkAutostart" Content="Autostart" Margin="5,5,0,5" VerticalAlignment="Top" Grid.Row="9" Grid.Column="0" ToolTip="Start server automatically on app start"/>
+                <CheckBox x:Name="chkLog" Content="Create server log file" Margin="0,5,0,5" VerticalAlignment="Top" Grid.Row="9" Grid.Column="1"/>
+                <CheckBox x:Name="chkAutoRestart" Content="Restart every" Margin="5,5,0,5" VerticalAlignment="Center" Grid.Row="10" Grid.ColumnSpan="2" ToolTip="Automatically restart the server once it's been up for this amount of time if there are no players connected" Checked="chkAutoRestart_Checked" Unchecked="chkAutoRestart_Checked"/>
+                <TextBox x:Name="txtRestartInterval" HorizontalAlignment="Left" Margin="125,5,0,5" TextWrapping="Wrap" VerticalAlignment="Center" Grid.Row="10" Grid.ColumnSpan="2" Width="58" IsEnabled="False"/>
+                <Label Content="hours" HorizontalAlignment="Left" Margin="200,0,0,0" VerticalAlignment="Center" Grid.Row="10" Grid.ColumnSpan="2"/>
+                <Button x:Name="btnSave" Content="Save" Margin="10,10,0,10" HorizontalAlignment="Left" VerticalAlignment="Center" Click="btnSave_Click" Grid.Row="11" Grid.Column="0"/>
             </Grid>
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"/>
             <Grid Grid.Column="2">

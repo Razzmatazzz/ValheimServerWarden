@@ -32,8 +32,6 @@ namespace ValheimServerWarden
         private ValheimServer _server;
         private string _steamPath;
         private string _externalIP;
-        private DiscordWebhookWindow _webhookwin;
-        private bool _webhookwinclosed;
         public ValheimServer Server
         {
             get
@@ -46,9 +44,6 @@ namespace ValheimServerWarden
             InitializeComponent();
             this._server = server;
             RefreshControls();
-            _webhookwin = new DiscordWebhookWindow(server);
-            _webhookwinclosed = false;
-            _webhookwin.Closed += _webhookwin_Closed;
             this.Server.Exited += ((object sender, ServerExitedEventArgs e) =>
             {
                 RefreshControls();
@@ -101,11 +96,6 @@ namespace ValheimServerWarden
                 Debug.WriteLine(ex);
             }
             GetExternalIP();
-        }
-
-        private void _webhookwin_Closed(object sender, EventArgs e)
-        {
-            this._webhookwinclosed = true;
         }
 
         public void RefreshControls()
@@ -186,6 +176,7 @@ namespace ValheimServerWarden
                 txtWorld.Text = Server.World;
                 txtPassword.Text = Server.Password;
                 txtSaveDir.Text = Server.SaveDir;
+                chkPublic.IsChecked = Server.Public;
                 chkAutostart.IsChecked = Server.Autostart;
                 chkLog.IsChecked = Server.Log;
             }
@@ -250,16 +241,6 @@ namespace ValheimServerWarden
         {
             OnShowLog(new ServerEventArgs(this.Server));
         }
-
-        private void Window_Closed(object sender, EventArgs e)
-        {
-            if (!_webhookwinclosed)
-            {
-                _webhookwin.Close();
-                _webhookwin = null;
-            }
-        }
-
         private void btnSave_Click(object sender, RoutedEventArgs e)
         {
             if (txtName.Text.Length > 0)
@@ -284,16 +265,28 @@ namespace ValheimServerWarden
             {
                 txtWorld.Text = Server.World;
             }
-            if (txtPassword.Text.Length == 0 || txtPassword.Text.Length >= 5)
+            if (txtPassword.Text.Length >= 5)
             {
-                Server.Password = txtPassword.Text;
+                if (!Server.World.Contains(txtPassword.Text))
+                {
+                    Server.Password = txtPassword.Text;
+                }
+                else
+                {
+                    var mmb = new ModernMessageBox(this);
+                    mmb.Show("Passwords are required, must be at least 5 characters, and cannot be contained in your world name.", "Invalid Password", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    txtPassword.Text = Server.Password;
+                }
             }
             else
             {
+                var mmb = new ModernMessageBox(this);
+                mmb.Show("Passwords are required, must be at least 5 characters, and cannot be contained in your world name.", "Invalid Password", MessageBoxButton.OK, MessageBoxImage.Warning);
                 txtPassword.Text = Server.Password;
             }
             Server.Password = txtPassword.Text;
             Server.SaveDir = txtSaveDir.Text;
+            Server.Public = chkPublic.IsChecked.GetValueOrDefault();
             Server.Autostart = chkAutostart.IsChecked.GetValueOrDefault();
             Server.Log = chkLog.IsChecked.GetValueOrDefault();
             int restartHours = Server.RestartHours;
@@ -330,7 +323,8 @@ namespace ValheimServerWarden
                 }
                 if (!Directory.Exists($@"{folderName}\worlds"))
                 {
-                    MessageBox.Show("Please select the folder where your Valheim save files are located. This folder should contain a \"worlds\" folder.",
+                    var mmb = new ModernMessageBox(this);
+                    mmb.Show("Please select the folder where your Valheim save files are located. This folder should contain a \"worlds\" folder.",
                                      "Invalid Folder", MessageBoxButton.OK, MessageBoxImage.Warning, MessageBoxResult.OK);
                     return;
                 }
@@ -403,14 +397,8 @@ namespace ValheimServerWarden
 
         private void btnDiscordWebhook_Click(object sender, RoutedEventArgs e)
         {
-            if (_webhookwinclosed)
-            {
-                _webhookwin = null;
-                _webhookwin = new DiscordWebhookWindow(this.Server);
-                _webhookwin.Closed += _webhookwin_Closed;
-            }
-            _webhookwin.Show();
-            _webhookwinclosed = false;
+            var webhookWin = new DiscordWebhookWindow(this.Server);
+            webhookWin.ShowDialog();
         }
 
         private void menuConnectCheckExternal_Click(object sender, RoutedEventArgs e)

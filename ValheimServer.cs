@@ -11,6 +11,7 @@ using System.Text.Json.Serialization;
 using System.ServiceProcess;
 using System.Runtime.InteropServices;
 using System.IO;
+using System.Globalization;
 
 namespace ValheimServerWarden
 {
@@ -30,6 +31,7 @@ namespace ValheimServerWarden
             internal string world;
             internal string password;
             internal string savedir;
+            internal bool pub;
             internal bool autostart;
             internal bool log;
             internal int restartHours;
@@ -87,6 +89,7 @@ namespace ValheimServerWarden
 
         private static Dictionary<string,string> _discordWebhookDefaultMessages = new Dictionary<string,string> {
             {"OnStarted", "Server {Server.Name} has started." },
+            {"OnServerExited", "Server {Server.Name} has stopped." },
             {"OnFailedPassword", "User with SteamID {Player.SteamID} tried to join with an invalid password." },
             {"OnPlayerConnected", "{Player.Name} has entered the fray!" },
             {"OnPlayerDisconnected", "{Player.Name} has departed." },
@@ -147,6 +150,17 @@ namespace ValheimServerWarden
             set
             {
                 this.data.savedir = value;
+            }
+        }
+        public bool Public
+        {
+            get
+            {
+                return this.data.pub;
+            }
+            set
+            {
+                this.data.pub = value;
             }
         }
         public bool Autostart
@@ -268,13 +282,14 @@ namespace ValheimServerWarden
                 return _discordWebhookDefaultMessages;
             }
         }
-        public ValheimServer(string name, int port, string world, string password, bool autostart, bool log, int restarthours, string discordwebhook, Dictionary<string,string> discordmessages)
+        public ValheimServer(string name, int port, string world, string password, bool pubserver, bool autostart, bool log, int restarthours, string discordwebhook, Dictionary<string,string> discordmessages)
         {
             this.data.name = name;
             this.data.port = 2456;
             this.data.world = world;
             this.data.password = password;
             this.data.savedir = "";
+            this.data.pub = pubserver;
             this.data.autostart = autostart;
             this.data.log = log;
             this.data.restartHours = restarthours;
@@ -315,11 +330,11 @@ namespace ValheimServerWarden
             }
         }
 
-        public ValheimServer() : this("My Server", 2456, "Dedicated", "Secret", false, false, 0, null, new Dictionary<string,string>())
+        public ValheimServer() : this("My Server", 2456, "Dedicated", "Secret", false, false, false, 0, null, new Dictionary<string,string>())
         {
         }
 
-        public ValheimServer(string name) : this(name, 2456, "Dedicated", "Secret", false, false, 0, null, new Dictionary<string,string>())
+        public ValheimServer(string name) : this(name, 2456, "Dedicated", "Secret", false, false, false, 0, null, new Dictionary<string,string>())
         {
 
         }
@@ -543,10 +558,18 @@ namespace ValheimServerWarden
                 logMessage($"Server {this.Name} cannot start because the server executable does not exist at ({Properties.Settings.Default.ServerFilePath}) does not contain {this.serverExe}. Please update the server executable path in the app settings.", LogType.Error);
                 return;
             }
-            string arguments = $"-nographics -batchmode -name \"{this.Name}\" -port {this.Port} -world \"{this.World}\" -password \"{this.Password}\"";
+            string arguments = $"-nographics -batchmode -name \"{this.Name}\" -port {this.Port} -world \"{this.World}\"";
+            if (Password != null & Password.Length > 0)
+            {
+                arguments += $" -password \"{this.Password}\"";
+            }
             if (!saveDir.Equals(defaultSaveDir))
             {
                 arguments += $" -savedir \"{this.SaveDir}\"";
+            }
+            if (Public)
+            {
+                arguments += $" -public 1";
             }
             if (testMode)
             {
@@ -686,6 +709,10 @@ namespace ValheimServerWarden
                 {
                     OnUpdated(new UpdatedEventArgs("SaveDir"));
                 }
+                if (backupData.pub != data.pub)
+                {
+                    OnUpdated(new UpdatedEventArgs("Public"));
+                }
                 if (backupData.autostart != data.autostart)
                 {
                     OnUpdated(new UpdatedEventArgs("Autostart"));
@@ -774,6 +801,14 @@ namespace ValheimServerWarden
         }
         private void OnServerExited(ServerExitedEventArgs args)
         {
+            try
+            {
+                SendDiscordWebhook(System.Reflection.MethodBase.GetCurrentMethod().Name, null, null);
+            }
+            catch (Exception ex)
+            {
+                logMessage($"Error sending Webhook for server stop: {ex.Message}", LogType.Error);
+            }
             EventHandler<ServerExitedEventArgs> handler = Exited;
             if (null != handler) handler(this, args);
         }
@@ -828,6 +863,24 @@ namespace ValheimServerWarden
             EventHandler<DataReceivedEventArgs> handler = ErrorDataReceived;
             if (null != handler) handler(this, args);
         }*/
+
+        public static void TerminateAll(Process[] servers)
+        {
+            new Thread(() =>
+            {
+                foreach (Process proc in servers)
+                {
+                    if (AttachConsole((uint)proc.Id))
+                    {
+                        SetConsoleCtrlHandler(null, true);
+                        GenerateConsoleCtrlEvent(ConsoleCtrlEvent.CTRL_C, 0);
+                        FreeConsole();
+                        proc.WaitForExit(2000);
+                        SetConsoleCtrlHandler(null, false);
+                    }
+                }
+            }).Start();
+        }
     }
 
         public class UpdatedEventArgs : EventArgs

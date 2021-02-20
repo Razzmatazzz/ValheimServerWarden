@@ -92,7 +92,7 @@
                             <RadioButton x:Name="radThemeDark" Content="Dark" Margin="135,5,0,5" GroupName="AppTheme" VerticalAlignment="Top" Checked="radThemeDark_Checked" Grid.Row="1"/>
                         </Grid>
                     </Border>
-                    <CheckBox x:Name="chkAutoCheckUpdate" Content="Automatically check for update" Margin="10,5,0,5" VerticalAlignment="Center" Click="chkAutoCheckUpdate_Click" Grid.Row="2"/>
+                    <CheckBox x:Name="chkAutoCheckUpdate" Content="Automatically check for update" Margin="10,5,0,5" VerticalAlignment="Center" Grid.Row="2" Checked="chkAutoCheckUpdate_Click" Unchecked="chkAutoCheckUpdate_Click"/>
                     <Button x:Name="btnUpdateCheck" Content="Check Now" Margin="251,5,0,5" VerticalAlignment="Center" Click="btnUpdateCheck_Click" Grid.Row="2"/>
 
                 </Grid>
