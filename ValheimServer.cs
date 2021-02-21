@@ -81,7 +81,7 @@ namespace ValheimServerWarden
         private ServerStatus status;
         private DateTime startTime;
         private bool intentionalExit;
-        private string connectingSteamID;
+        private List<string> connectingSteamIds;
         private bool needsRestart;
         private bool scheduledRestart;
         private System.Timers.Timer restartTimer;
@@ -315,6 +315,8 @@ namespace ValheimServerWarden
             this.status = ServerStatus.Stopped;
             this.scheduledRestart = false;
             this.needsRestart = false;
+
+            connectingSteamIds = new List<string>();
         }
 
         private void RestartTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
@@ -430,7 +432,10 @@ namespace ValheimServerWarden
             Match match = rx.Match(msg);
             if (match.Success)
             {
-                this.connectingSteamID = null;
+                if (connectingSteamIds.Contains(match.Groups[1].ToString()))
+                {
+                    connectingSteamIds.Remove(match.Groups[1].ToString());
+                }
                 OnFailedPassword(new FailedPasswordEventArgs(this, match.Groups[1].ToString()));
                 return;
             }
@@ -440,24 +445,18 @@ namespace ValheimServerWarden
             match = rx.Match(msg);
             if (match.Success)
             {
-                this.connectingSteamID = match.Groups[1].ToString();
+                connectingSteamIds.Add(match.Groups[1].ToString());
                 return;
             }
 
-            //Monitor for new player connected
+            //Monitor for new player connected and player deaths
             rx = new Regex(@"Got character ZDOID from (.+) : (-?\d+:-?\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
             match = rx.Match(msg);
             if (match.Success)
             {
-                if (this.connectingSteamID != null)
+                if (match.Groups[2].ToString().Equals("0:0"))
                 {
-                    Player player = new Player(match.Groups[1].ToString(), this.connectingSteamID);
-                    this.players.Add(player);
-                    this.connectingSteamID = null;
-                    OnPlayerConnected(new PlayerEventArgs(this, player));
-                }
-                else if (match.Groups[2].ToString().Equals("0:0"))
-                {
+                    //player died
                     foreach (Player player in this.players)
                     {
                         if (player.Name.Equals(match.Groups[1].ToString()))
@@ -467,6 +466,15 @@ namespace ValheimServerWarden
                             break;
                         }
                     }
+                } 
+                else if (connectingSteamIds.Count > 0)
+                {
+                    //player connected
+                    var steamid = connectingSteamIds.First();
+                    Player player = new Player(match.Groups[1].ToString(), steamid);
+                    this.players.Add(player);
+                    connectingSteamIds.Remove(steamid);
+                    OnPlayerConnected(new PlayerEventArgs(this, player));
                 }
                 return;
             }
