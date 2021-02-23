@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -193,20 +194,52 @@ namespace ValheimServerWarden
                         if (fullSteamPath != null)
                         {
                             var mmb = new ModernMessageBox(this);
-                            var confirmResult = mmb.Show("VSW couldn't find the Valheim dedicated server installed, but it found Steam. Do you want to ask Steam to install the dedicated server?",
-                                         "Install dedicated server?", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+                            mmb.SetButtonText(new NameValueCollection() { { "Yes", "Steam" }, { "No", "SteamCMD" }, { "Cancel", "Manual" } });
+                            var confirmResult = mmb.Show("VSW couldn't find the Valheim dedicated server installed, but it found Steam. Do you want to install the dedicated server via Steam, SteamCMD, or manually select your installation location?",
+                                         "Install dedicated server?", MessageBoxButton.YesNoCancel, MessageBoxImage.Question, MessageBoxResult.Cancel);
                             if (confirmResult == MessageBoxResult.Yes)
                             {
                                 mmb = new ModernMessageBox(this);
                                 mmb.Show("Once the dedicated server finishes installing, restart this app and it will hopefully detect the dedicated server location.",
                                          "Restart Required", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
-                                Process.Start(fullSteamPath, $"-applaunch 896660");
+                                Process.Start(fullSteamPath, $"-applaunch {ValheimServer.SteamID}");
                                 logMessage("Please restart this app once the Valheim dedicated server finishes installing.");
+                                Properties.Settings.Default.ServerInstallType = "Steam";
+                                Properties.Settings.Default.Save();
                                 return;
+                            }
+                            else if (confirmResult == MessageBoxResult.No)
+                            {
+                                var steamCmdWindow = new InstallSteamCmdWindow();
+                                steamCmdWindow.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                                if (steamCmdWindow.ShowDialog().GetValueOrDefault())
+                                {
+                                    logMessage("Valheim dedicated server installed via SteamCMD.");
+                                    return;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            var mmb = new ModernMessageBox(this);
+                            mmb.SetButtonText(new NameValueCollection() { { "OK", "SteamCMD" }, { "Cancel", "Manual" } });
+                            var confirmResult = mmb.Show("VSW couldn't find the Valheim dedicated server installation. Do you want to install the dedicated server via SteamCMD or manually select your installation location?",
+                                         "Install dedicated server?", MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel);
+                            if (confirmResult == MessageBoxResult.OK)
+                            {
+                                var steamCmdWindow = new InstallSteamCmdWindow();
+                                steamCmdWindow.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                                if (steamCmdWindow.ShowDialog().GetValueOrDefault())
+                                {
+                                    logMessage("Valheim dedicated server installed via SteamCMD.");
+                                    return;
+                                }
                             }
                         }
                     }
-                    logMessage("Valid path for dedicated server not found. Please set manually in preferences.");
+                    logMessage("Valid path for dedicated server not found. Please set manually in settings.");
+                    Properties.Settings.Default.ServerInstallType = "Manual";
+                    Properties.Settings.Default.Save();
                 }
             }
             catch (Exception ex)
@@ -297,6 +330,7 @@ namespace ValheimServerWarden
                 server.Exited += Server_Exited;
                 //server.UpdatedPlayers += Server_UpdatedPlayers;
                 server.Started += Server_Started;
+                server.StartFailed += Server_StartFailed;
                 server.FailedPassword += Server_FailedPassword;
                 server.PlayerConnected += Server_PlayerConnected;
                 server.PlayerDisconnected += Server_PlayerDisconnected;
@@ -306,6 +340,22 @@ namespace ValheimServerWarden
             catch (Exception ex)
             {
                 logMessage($"Error attaching event listeners: {ex.Message}", LogType.Error);
+            }
+        }
+
+        private void Server_StartFailed(object sender, ServerEventArgs e)
+        {
+            try
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    logMessage($"Server {e.Server.Name} failed to start.", LogType.Error);
+                    RefreshDataGrid();
+                });
+            }
+            catch (Exception ex)
+            {
+                logMessage($"Error responding to server start failed event: {ex.Message}", LogType.Error);
             }
         }
 
@@ -418,23 +468,6 @@ namespace ValheimServerWarden
                 logMessage($"Error responding to FailedPassword event: {ex.Message}", LogType.Error);
             }
         }
-
-        private void Server_UpdatedPlayers(object sender, ServerEventArgs e)
-        {
-            try
-            {
-                this.Dispatcher.Invoke(() =>
-                {
-                    logMessage($"Server {e.Server.Name}: updated player count to {e.Server.Players}");
-                    RefreshDataGrid();
-                });
-            }
-            catch (Exception ex)
-            {
-                logMessage($"Error responding to UpdatedPlayers event: {ex.Message}", LogType.Error);
-            }
-        }
-
         private void serversMenuAdd_Click(object sender, RoutedEventArgs e)
         {
             try

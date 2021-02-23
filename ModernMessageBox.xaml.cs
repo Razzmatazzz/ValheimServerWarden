@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -114,6 +115,29 @@ namespace ValheimServerWarden
             }
             base.ShowDialog();
             return _result;
+        }
+
+        public void SetButtonText(NameValueCollection btnText)
+        {
+            foreach (string key in btnText)
+            {
+                if (key == btnOK.Content.ToString())
+                {
+                    btnOK.Content = btnText[key];
+                }
+                else if (key == btnYes.Content.ToString())
+                {
+                    btnYes.Content = btnText[key];
+                }
+                else if (key == btnNo.Content.ToString())
+                {
+                    btnNo.Content = btnText[key];
+                }
+                else if (key == btnCancel.Content.ToString())
+                {
+                    btnCancel.Content = btnText[key];
+                }
+            }
         }
 
         private ImageSource ToImageSource(Icon icon)

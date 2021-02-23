@@ -21,6 +21,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
@@ -29,29 +30,32 @@
         </Grid.ColumnDefinitions>
         <Label Content="Webhook URL" HorizontalAlignment="Left" Margin="10,10,0,5" VerticalAlignment="Top" Grid.Row="0" Grid.ColumnSpan="3"/>
         <TextBox x:Name="txtWebhook" HorizontalAlignment="Stretch" Margin="10,5,10,5" TextWrapping="Wrap" VerticalAlignment="Stretch" Grid.Row="1" Grid.ColumnSpan="3"/>
-        <Label Content="Webhook Messages" ToolTip="To disable the webhook for an event, just make the messge blank" HorizontalAlignment="Left" Margin="10,10,0,5" VerticalAlignment="Top" Grid.Row="2" Grid.ColumnSpan="2"/>
+        <Label Content="Webhook Messages" ToolTip="To disable the webhook for an event, just erase the messge" HorizontalAlignment="Left" Margin="10,10,0,5" VerticalAlignment="Top" Grid.Row="2" Grid.ColumnSpan="2"/>
         <Label Content="Server Started" Margin="10,5,5,5" VerticalAlignment="Center" Grid.Row="3" Grid.Column="0"/>
         <TextBox x:Name="OnStarted" Margin="5" Grid.Row="3" Grid.Column="1" />
         <Button x:Name="btnTestServerStarted" Content="Test" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="3" Grid.Column="2" Click="btnTestServerStarted_Click"/>
-        <Label Content="Server Stopped" Margin="10,5,5,5" VerticalAlignment="Center" Grid.Row="4" Grid.Column="0"/>
-        <TextBox x:Name="OnServerExited" Margin="5" Grid.Row="4" Grid.Column="1" />
-        <Button x:Name="btnTestServerStopped" Content="Test" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="4" Grid.Column="2" Click="btnTestServerStopped_Click"/>
-        <Label Content="Player Connected" Margin="10,5,5,5" VerticalAlignment="Center" Grid.Row="5" Grid.Column="0"/>
-        <TextBox x:Name="OnPlayerConnected" Margin="5" Grid.Row="5" Grid.Column="1" />
-        <Button x:Name="btnTestConnected" Content="Test" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="5" Grid.Column="2" Click="btnTestConnected_Click"/>
-        <Label Content="Player Disconnected" Margin="10,5,5,5" VerticalAlignment="Center" Grid.Row="6" Grid.Column="0"/>
-        <TextBox x:Name="OnPlayerDisconnected" Margin="6" Grid.Row="6" Grid.Column="1" />
-        <Button x:Name="btnTestDisconnected" Content="Test" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="6" Grid.Column="2" Click="btnTestDisconnected_Click"/>
-        <Label Content="Player Died" Margin="10,5,5,5" VerticalAlignment="Center" Grid.Row="7" Grid.Column="0"/>
-        <TextBox x:Name="OnPlayerDied" Margin="5" Grid.Row="7" Grid.Column="1" />
-        <Button x:Name="btnTestDied" Content="Test" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="7" Grid.Column="2" Click="btnTestDied_Click"/>
-        <Label Content="Wrong Password" Margin="10,5,5,5" VerticalAlignment="Center" Grid.Row="8" Grid.Column="0"/>
-        <TextBox x:Name="OnFailedPassword" Margin="5" Grid.Row="8" Grid.Column="1" />
-        <Button x:Name="btnFailedPassword" Content="Test" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="8" Grid.Column="2" Click="btnFailedPassword_Click"/>
-        <Label Content="Random Event" Margin="10,5,5,5" VerticalAlignment="Center" Grid.Row="9" Grid.Column="0"/>
-        <TextBox x:Name="OnRandomServerEvent" Margin="5" Grid.Row="9" Grid.Column="1" />
-        <Button x:Name="btnRandomServerEvent" Content="Test" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="9" Grid.Column="2" Click="btnRandomServerEvent_Click"/>
-        <Grid Grid.Row="10" Grid.ColumnSpan="3" HorizontalAlignment="Center">
+        <Label Content="Server Start Failed" Margin="10,5,5,5" VerticalAlignment="Center" Grid.Row="4" Grid.Column="0"/>
+        <TextBox x:Name="OnStartFailed" Margin="5" Grid.Row="4" Grid.Column="1" />
+        <Button x:Name="btnTestServerStartFailed" Content="Test" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="4" Grid.Column="2" Click="btnTestServerStarted_Click"/>
+        <Label Content="Server Stopped" Margin="10,5,5,5" VerticalAlignment="Center" Grid.Row="5" Grid.Column="0"/>
+        <TextBox x:Name="OnServerExited" Margin="5" Grid.Row="5" Grid.Column="1" />
+        <Button x:Name="btnTestServerStopped" Content="Test" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="5" Grid.Column="2" Click="btnTestServerStopped_Click"/>
+        <Label Content="Player Connected" Margin="10,5,5,5" VerticalAlignment="Center" Grid.Row="6" Grid.Column="0"/>
+        <TextBox x:Name="OnPlayerConnected" Margin="5" Grid.Row="6" Grid.Column="1" />
+        <Button x:Name="btnTestConnected" Content="Test" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="6" Grid.Column="2" Click="btnTestConnected_Click"/>
+        <Label Content="Player Disconnected" Margin="10,5,5,5" VerticalAlignment="Center" Grid.Row="7" Grid.Column="0"/>
+        <TextBox x:Name="OnPlayerDisconnected" Margin="6" Grid.Row="7" Grid.Column="1" />
+        <Button x:Name="btnTestDisconnected" Content="Test" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="7" Grid.Column="2" Click="btnTestDisconnected_Click"/>
+        <Label Content="Player Died" Margin="10,5,5,5" VerticalAlignment="Center" Grid.Row="8" Grid.Column="0"/>
+        <TextBox x:Name="OnPlayerDied" Margin="5" Grid.Row="8" Grid.Column="1" />
+        <Button x:Name="btnTestDied" Content="Test" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="8" Grid.Column="2" Click="btnTestDied_Click"/>
+        <Label Content="Wrong Password" Margin="10,5,5,5" VerticalAlignment="Center" Grid.Row="9" Grid.Column="0"/>
+        <TextBox x:Name="OnFailedPassword" Margin="5" Grid.Row="9" Grid.Column="1" />
+        <Button x:Name="btnFailedPassword" Content="Test" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="9" Grid.Column="2" Click="btnFailedPassword_Click"/>
+        <Label Content="Random Event" Margin="10,5,5,5" VerticalAlignment="Center" Grid.Row="10" Grid.Column="0"/>
+        <TextBox x:Name="OnRandomServerEvent" Margin="5" Grid.Row="10" Grid.Column="1" />
+        <Button x:Name="btnRandomServerEvent" Content="Test" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="10" Grid.Column="2" Click="btnRandomServerEvent_Click"/>
+        <Grid Grid.Row="11" Grid.ColumnSpan="3" HorizontalAlignment="Center">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="1*"/>
                 <ColumnDefinition Width="Auto"/>

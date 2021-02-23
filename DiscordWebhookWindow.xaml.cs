@@ -45,6 +45,7 @@ namespace ValheimServerWarden
             messageControls.Add(OnFailedPassword);
             messageControls.Add(OnRandomServerEvent);
             messageControls.Add(OnStarted);
+            messageControls.Add(OnStartFailed);
             messageControls.Add(OnServerExited);
             foreach (TextBox textBox in messageControls)
             {
@@ -114,7 +115,10 @@ namespace ValheimServerWarden
         {
             _server.SendDiscordWebhook(OnStarted.Name, null, null);
         }
-
+        private void btnTestServerStartFailed_Click(object sender, RoutedEventArgs e)
+        {
+            _server.SendDiscordWebhook(OnStartFailed.Name, null, null);
+        }
         private void btnTestServerStopped_Click(object sender, RoutedEventArgs e)
         {
             _server.SendDiscordWebhook(OnStarted.Name, null, null);

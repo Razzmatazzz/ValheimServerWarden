@@ -82,5 +82,29 @@ namespace ValheimServerWarden.Properties {
                 this["ShowMinimizeMessage"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Steam")]
+        public string ServerInstallType {
+            get {
+                return ((string)(this["ServerInstallType"]));
+            }
+            set {
+                this["ServerInstallType"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SteamCMDPath {
+            get {
+                return ((string)(this["SteamCMDPath"]));
+            }
+            set {
+                this["SteamCMDPath"] = value;
+            }
+        }
     }
 }

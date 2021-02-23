@@ -74,7 +74,7 @@ namespace ValheimServerWarden
         private string serverExe = "valheim_server.exe";
         private bool testMode = false;
         private ServerData data;
-        private Dictionary<string,string> _discordWebhookMesssages;
+        private Dictionary<string, string> _discordWebhookMesssages;
         private ServerData backupData;
         private Process process;
         private PlayerList players;
@@ -87,8 +87,9 @@ namespace ValheimServerWarden
         private System.Timers.Timer restartTimer;
         private bool inTxn = false;
 
-        private static Dictionary<string,string> _discordWebhookDefaultMessages = new Dictionary<string,string> {
+        private static Dictionary<string, string> _discordWebhookDefaultMessages = new Dictionary<string, string> {
             {"OnStarted", "Server {Server.Name} has started." },
+            {"OnStartFailed", "Server {Server.Name} failed to start." },
             {"OnServerExited", "Server {Server.Name} has stopped." },
             {"OnFailedPassword", "User with SteamID {Player.SteamID} tried to join with an invalid password." },
             {"OnPlayerConnected", "{Player.Name} has entered the fray!" },
@@ -96,6 +97,8 @@ namespace ValheimServerWarden
             {"OnPlayerDied", "{Player.Name} met an untimely demise." },
             {"OnRandomServerEvent", "An {EventName} attack is underway!" }
         };
+
+        public static string SteamID { get { return "896660"; } }
 
         public string Name
         {
@@ -528,7 +531,8 @@ namespace ValheimServerWarden
             }
 
             //Monitor for server fails to start
-            rx = new Regex(@"GameServer.Init\(\) failed", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            // handled more robustly in the process exited event handler
+            /*rx = new Regex(@"GameServer.Init\(\) failed", RegexOptions.Compiled | RegexOptions.IgnoreCase);
             match = rx.Match(msg);
             if (match.Success)
             {
@@ -536,7 +540,7 @@ namespace ValheimServerWarden
                 OnStartFailed(new ServerEventArgs(this));
                 logMessage($"Server {this.Name} failed to start. Maybe try a different port", LogType.Error);
                 return;
-            }
+            }*/
 
             //Monitor for random events
             rx = new Regex(@"Random event set:([a-zA-Z0-9_]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -545,6 +549,7 @@ namespace ValheimServerWarden
             {
                 OnRandomServerEvent(new RandomServerEventArgs(this, match.Groups[1].ToString()));
                 return;
+                //army_moder
             }
         }
 
@@ -660,14 +665,30 @@ namespace ValheimServerWarden
 
         private void Process_Exited(object sender, EventArgs e)
         {
+            bool failedstart = (this.status == ServerStatus.Starting);
+            bool unwantedexit = (this.status != ServerStatus.Stopping);
             this.status = ServerStatus.Stopped;
             this.process.CancelOutputRead();
             //this.processRunning = false;
             this.players.Clear();
-            OnServerExited(new ServerExitedEventArgs(this, this.process.ExitCode, this.intentionalExit));
-            if (scheduledRestart)
+            if (failedstart)
             {
-                this.Start();
+                OnStartFailed(new ServerEventArgs(this));
+            }
+            else
+            {
+                OnServerExited(new ServerExitedEventArgs(this, this.process.ExitCode, this.intentionalExit));
+                if (scheduledRestart)
+                {
+                    this.Start();
+                } else if (unwantedexit)
+                {
+                    logMessage($"Server {this.Name} stopped unexpectedly.", LogType.Error);
+                    if (this.Autostart)
+                    {
+                        this.Start();
+                    }
+                }
             }
         }
         private void logMessage(string message, LogType logtype)
@@ -697,42 +718,55 @@ namespace ValheimServerWarden
         {
             if (inTxn)
             {
+                var changedValues = new NameValueCollection();
                 if (backupData.name != data.name)
                 {
-                    OnUpdated(new UpdatedEventArgs("Name"));
+                    changedValues["Name"] = backupData.name;
+                    //OnUpdated(new UpdatedEventArgs("Name"));
                 }
                 if (backupData.port!= data.port)
                 {
-                    OnUpdated(new UpdatedEventArgs("Port"));
+                    changedValues["Port"] = backupData.port.ToString();
+                    //OnUpdated(new UpdatedEventArgs("Port"));
                 }
                 if (backupData.world != data.world)
                 {
-                    OnUpdated(new UpdatedEventArgs("World"));
+                    changedValues["World"] = backupData.world;
+                    //OnUpdated(new UpdatedEventArgs("World"));
                 }
                 if (backupData.password != data.password)
                 {
-                    OnUpdated(new UpdatedEventArgs("Password"));
+                    changedValues["Password"] = backupData.password;
+                    //OnUpdated(new UpdatedEventArgs("Password"));
                 }
                 if (backupData.savedir != data.savedir)
                 {
-                    OnUpdated(new UpdatedEventArgs("SaveDir"));
+                    changedValues["SaveDir"] = backupData.savedir;
+                    //OnUpdated(new UpdatedEventArgs("SaveDir"));
                 }
                 if (backupData.pub != data.pub)
                 {
-                    OnUpdated(new UpdatedEventArgs("Public"));
+                    changedValues["Public"] = backupData.pub.ToString();
+                    //OnUpdated(new UpdatedEventArgs("Public"));
                 }
                 if (backupData.autostart != data.autostart)
                 {
-                    OnUpdated(new UpdatedEventArgs("Autostart"));
+                    changedValues["Autostart"] = backupData.autostart.ToString();
+                    //OnUpdated(new UpdatedEventArgs("Autostart"));
                 }
                 if (backupData.log != data.log)
                 {
-                    OnUpdated(new UpdatedEventArgs("Log"));
+                    changedValues["Log"] = backupData.log.ToString();
+                    //OnUpdated(new UpdatedEventArgs("Log"));
                 }
                 if (backupData.restartHours != data.restartHours)
                 {
-                    OnUpdated(new UpdatedEventArgs("RestartHours"));
-
+                    changedValues["RestartHours"] = backupData.restartHours.ToString();
+                    //OnUpdated(new UpdatedEventArgs("RestartHours"));
+                }
+                if (changedValues.Count > 0)
+                {
+                    OnUpdated(new UpdatedEventArgs(changedValues));
                 }
                 backupData = new ServerData();
                 inTxn = false;
@@ -893,16 +927,16 @@ namespace ValheimServerWarden
 
         public class UpdatedEventArgs : EventArgs
     {
-        private readonly string _fieldName;
+        private readonly NameValueCollection _fieldNames;
 
-        public UpdatedEventArgs(string fieldName)
+        public UpdatedEventArgs(NameValueCollection fieldNames)
         {
-            _fieldName = fieldName;
+            _fieldNames = fieldNames;
         }
 
-        public string FieldName
+        public NameValueCollection FieldName
         {
-            get { return _fieldName; }
+            get { return _fieldNames; }
         }
     }
 

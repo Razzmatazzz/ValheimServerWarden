@@ -134,24 +134,28 @@ namespace ValheimServerWarden
                             btnConnect.IsEnabled = true;
                             btnConnect.Content = FindResource("Connect");
                         }
+                        btnSteamCmd.IsEnabled = false;
                     }
-                    if (status == ValheimServer.ServerStatus.Stopped)
+                    else if (status == ValheimServer.ServerStatus.Stopped)
                     {
                         btnStart.IsEnabled = true;
                         btnStart.Content = FindResource("Start");
+                        btnSteamCmd.IsEnabled = true;
+                    } 
+                    else
+                    {
+                        btnSteamCmd.IsEnabled = false;
                     }
                     btnLog.IsEnabled = (File.Exists(Server.GetLogName()));
                     btnLog.Visibility = (File.Exists(Server.GetLogName())) ? Visibility.Visible : Visibility.Hidden;
 
-                    if (Server.RestartHours > 0)
+                    if (Properties.Settings.Default.SteamCMDPath != null && Properties.Settings.Default.SteamCMDPath.Length > 0 && File.Exists(Properties.Settings.Default.SteamCMDPath) && Properties.Settings.Default.ServerInstallType == "SteamCMD")
                     {
-                        chkAutoRestart.IsChecked = true;
-                        txtRestartInterval.Text = Server.RestartHours.ToString();
-                        txtRestartInterval.IsEnabled = true;
-                    } else
+                        btnSteamCmd.Visibility = Visibility.Visible;
+                    }
+                    else
                     {
-                        chkAutoRestart.IsChecked = false;
-                        txtRestartInterval.IsEnabled = false;
+                        btnSteamCmd.Visibility = Visibility.Collapsed;
                     }
                 }
                 catch (Exception ex)
@@ -179,6 +183,18 @@ namespace ValheimServerWarden
                 chkPublic.IsChecked = Server.Public;
                 chkAutostart.IsChecked = Server.Autostart;
                 chkLog.IsChecked = Server.Log;
+
+                if (Server.RestartHours > 0)
+                {
+                    chkAutoRestart.IsChecked = true;
+                    txtRestartInterval.Text = Server.RestartHours.ToString();
+                    txtRestartInterval.IsEnabled = true;
+                }
+                else
+                {
+                    chkAutoRestart.IsChecked = false;
+                    txtRestartInterval.IsEnabled = false;
+                }
             }
             catch (Exception ex)
             {
@@ -293,11 +309,15 @@ namespace ValheimServerWarden
             if (chkAutoRestart.IsChecked.GetValueOrDefault())
             {
                 int.TryParse(txtRestartInterval.Text, out restartHours);
+            } 
+            else
+            {
+                restartHours = 0;
             }
             if (restartHours > -1)
             {
                 Server.RestartHours = restartHours;
-            }
+            } 
             if (restartHours == 0)
             {
                 txtRestartInterval.Text = "";
@@ -305,6 +325,11 @@ namespace ValheimServerWarden
             }
             OnEditedServer(new ServerEventArgs(this.Server));
             RefreshControls();
+            if (Server.Running)
+            {
+                var mmb = new ModernMessageBox(this);
+                mmb.Show("You must restart the server for the server name, port, world, password, save folder, or public status to change.", "Server Restart", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
 
         private void btnSaveDir_Click(object sender, RoutedEventArgs e)
@@ -385,11 +410,6 @@ namespace ValheimServerWarden
             Clipboard.SetText($"steam://connect/{_externalIP}:{this.Server.Port + 1}");
         }
 
-        private void chkAutoRestart_Click(object sender, RoutedEventArgs e)
-        {
-            
-        }
-
         private void chkAutoRestart_Checked(object sender, RoutedEventArgs e)
         {
             txtRestartInterval.IsEnabled = chkAutoRestart.IsChecked.GetValueOrDefault();
@@ -404,6 +424,29 @@ namespace ValheimServerWarden
         private void menuConnectCheckExternal_Click(object sender, RoutedEventArgs e)
         {
             Process.Start("cmd", $"/C start https://southnode.net/form_get.php?ip={_externalIP}");
+        }
+
+        private void btnSteamCmd_Click(object sender, RoutedEventArgs e)
+        {
+            btnSteamCmd.ContextMenu.IsOpen = true;
+        }
+
+        private void menuSteamCmdUpdate_Click(object sender, RoutedEventArgs e)
+        {
+            if (!Server.Running)
+            {
+                var process = new Process();
+                process.StartInfo.FileName = Properties.Settings.Default.SteamCMDPath;
+                process.StartInfo.Arguments = $"+login anonymous +force_install_dir \"{(new FileInfo(Properties.Settings.Default.ServerFilePath).Directory.FullName)}\" +app_update {ValheimServer.SteamID} +validate +quit";
+                //process.EnableRaisingEvents = true;
+                process.Start();
+                process.WaitForExit();
+            } 
+            else
+            {
+                var mmb = new ModernMessageBox(this);
+                mmb.Show("Please stop the server before updating.", "Stop Server to Update", MessageBoxButton.OK, MessageBoxImage.Warning, MessageBoxResult.OK);
+            }
         }
     }
 }

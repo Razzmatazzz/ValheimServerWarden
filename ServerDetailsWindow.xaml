@@ -31,6 +31,7 @@
                     <ColumnDefinition Width="50"/>
                     <ColumnDefinition Width="50"/>
                     <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="50"/>
                     <ColumnDefinition/>
                     <ColumnDefinition Width="50"/>
                 </Grid.ColumnDefinitions>
@@ -72,6 +73,20 @@
                     <Button.Content>
                         <Image Source="Resources/Discord_32x.png"/>
                     </Button.Content>
+                </Button>
+                <Button x:Name="btnSteamCmd" ToolTip="SteamCMD options" Width="Auto" Margin="5" VerticalAlignment="Top" Grid.Column="5" Click="btnSteamCmd_Click" >
+                    <Button.Content>
+                        <Image Source="Resources/Console_32x.png"/>
+                    </Button.Content>
+                    <Button.ContextMenu>
+                        <ContextMenu x:Name="menuSteamCmd">
+                            <MenuItem x:Name="menuSteamCmdUpdate" Header="Update" ToolTip="Update server files via SteamCMD" Click="menuSteamCmdUpdate_Click">
+                                <MenuItem.Icon>
+                                    <Image Source="Resources/Upload_32x.png"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </ContextMenu>
+                    </Button.ContextMenu>
                 </Button>
             </Grid>
         </Grid>
