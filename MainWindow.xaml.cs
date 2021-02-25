@@ -21,6 +21,8 @@ using System.Threading;
 using ModernWpf;
 using System.Net;
 using System.Text.RegularExpressions;
+using RazzTools;
+using GitHub;
 
 namespace ValheimServerWarden
 {
@@ -53,6 +55,11 @@ namespace ValheimServerWarden
                 Properties.Settings.Default.Upgrade();
                 Properties.Settings.Default.UpgradeRequired = false;
                 Properties.Settings.Default.Save();
+            }
+            Width = Properties.Settings.Default.MainWindowWidth;
+            if (Properties.Settings.Default.MainWindowHeight > 0)
+            {
+                Height = Properties.Settings.Default.MainWindowHeight;
             }
             defaultTextColor = ((SolidColorBrush)this.Foreground).Color;
             if (Properties.Settings.Default.AppTheme.Equals("Dark"))
@@ -503,6 +510,12 @@ namespace ValheimServerWarden
                         logMessage($"Server {server.Name} is still running. Please stop all servers before exiting.", LogType.Error);
                         e.Cancel = true;
                     }
+                    else
+                    {
+                        Properties.Settings.Default.MainWindowWidth = Width;
+                        Properties.Settings.Default.MainWindowHeight = Height;
+                        Properties.Settings.Default.Save();
+                    }
                 }
                 if (!e.Cancel) SaveServers();
             }
@@ -911,13 +924,12 @@ namespace ValheimServerWarden
                 try
                 {
                     WebClient client = new WebClient();
-                    string source = client.DownloadString("https://github.com/Razzmatazzz/ValheimServerWarden/releases/latest");
-                    string title = Regex.Match(source, @"\<title\b[^>]*\>\s*(?<Title>[\s\S]*?)\</title\>", RegexOptions.IgnoreCase).Groups["Title"].Value;
-                    string remoteVer = Regex.Match(source, @"Valheim Server Warden (?<Version>([\d.]+)?)", RegexOptions.IgnoreCase).Groups["Version"].Value;
-
-                    Version remoteVersion = new Version(remoteVer);
+                    client.Headers.Add("User-Agent", "ValheimServerWarden");
+                    string source = client.DownloadString("https://api.github.com/repos/Razzmatazzz/ValheimServerWarden/releases/latest");
+                    client.Dispose();
+                    var release = JsonSerializer.Deserialize<GitHubRelease>(source);
+                    Version remoteVersion = new Version(release.tag_name);
                     Version localVersion = typeof(MainWindow).Assembly.GetName().Version;
-
                     this.Dispatcher.Invoke(() =>
                     {
                         try
@@ -925,11 +937,11 @@ namespace ValheimServerWarden
                             if (localVersion.CompareTo(remoteVersion) == -1)
                             {
                                 var mmb = new ModernMessageBox(this);
-                                var confirmResult = mmb.Show("There is a new version available. Would you like to open the download page?",
+                                var confirmResult = mmb.Show("There is a new version available. Would you like to visit the download page?",
                                          "Update Available", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
                                 if (confirmResult == MessageBoxResult.Yes)
                                 {
-                                    Process.Start("cmd", "/C start https://github.com/Razzmatazzz/ValheimServerWarden/releases/latest");
+                                    Process.Start("cmd", $"/C start {release.html_url}");
                                 }
                             }
                             else
@@ -1069,6 +1081,11 @@ namespace ValheimServerWarden
                     return;
                 }
             }
+        }
+
+        private void lblReportBug_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            Process.Start("cmd", "/C start https://github.com/Razzmatazzz/ValheimServerWarden/issues");
         }
     }
     public enum LogType

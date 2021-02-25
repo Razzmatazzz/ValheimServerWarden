@@ -77,6 +77,7 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     <Button x:Name="btnServerPath" Content="Dedicated Server Path" HorizontalAlignment="Left" Margin="10,15,10,15" VerticalAlignment="Center" Click="btnServerPath_Click" Grid.Row="0" ToolTip="Path to valheim_server.exe"/>
@@ -94,7 +95,7 @@
                     </Border>
                     <CheckBox x:Name="chkAutoCheckUpdate" Content="Automatically check for update" Margin="10,5,0,5" VerticalAlignment="Center" Grid.Row="2" Checked="chkAutoCheckUpdate_Click" Unchecked="chkAutoCheckUpdate_Click"/>
                     <Button x:Name="btnUpdateCheck" Content="Check Now" Margin="251,5,0,5" VerticalAlignment="Center" Click="btnUpdateCheck_Click" Grid.Row="2"/>
-
+                    <Label x:Name="lblReportBug" Content="Found a bug? Report it on GitHub." Margin="10" Cursor="Hand" Grid.Row="4" MouseLeftButtonUp="lblReportBug_MouseLeftButtonUp"/>
                 </Grid>
             </TabItem>
             <TabItem Header="Log">

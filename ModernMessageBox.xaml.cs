@@ -16,7 +16,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
-namespace ValheimServerWarden
+namespace RazzTools
 {
     /// <summary>
     /// Interaction logic for ModernMessageBox.xaml

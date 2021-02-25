@@ -76,12 +76,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="Resources\Add_32x.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Cancel_32x.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Resource>
+    <Resource Include="Resources\Add_32x.png"/>
+    <Resource Include="Resources\Cancel_32x.png"/>
     <Resource Include="Resources\Cancel_grey_32x.png" />
     <Resource Include="Resources\Checkmark_green_32x.png" />
     <Resource Include="Resources\Connected_32x.png" />
@@ -93,19 +89,11 @@
     <Resource Include="Resources\ListView_32x.png" />
     <Resource Include="Resources\Log_32x.png" />
     <Resource Include="Resources\QuickFind_32x.png" />
-    <Resource Include="Resources\Settings_16x.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Settings_32x.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\StartWithoutDebug_32x.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Resource>
+    <Resource Include="Resources\Settings_16x.png"/>
+    <Resource Include="Resources\Settings_32x.png"/>
+    <Resource Include="Resources\StartWithoutDebug_32x.png"/>
     <Resource Include="Resources\StartWithoutDebug_grey_32x.png" />
-    <Resource Include="Resources\Stop_32x.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Resource>
+    <Resource Include="Resources\Stop_32x.png"/>
     <Resource Include="Resources\Stop_grey_32x.png" />
     <Resource Include="Resources\Unconnected_32x.png" />
     <Resource Include="Resources\Upload_32x.png" />
