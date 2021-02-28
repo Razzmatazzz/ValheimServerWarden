@@ -91,11 +91,11 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Button x:Name="btnServerPath" Content="Default Server Path" Margin="10" HorizontalAlignment="Stretch" VerticalAlignment="Center" Click="btnServerPath_Click" Grid.Row="0" Grid.Column="0" ToolTip="Path to valheim_server.exe"/>
-                        <TextBox x:Name="txtServerPath" ToolTip="Default dedicated server installation used for new servers" Margin="10" TextWrapping="Wrap" VerticalAlignment="Center" IsReadOnly="True" Grid.Row="0" Grid.Column="1"/>
+                        <TextBox x:Name="txtServerPath" ToolTip="Default dedicated server installation used for new servers" Margin="10" TextWrapping="Wrap" VerticalAlignment="Center" IsReadOnly="True" IsTabStop="False" Grid.Row="0" Grid.Column="1"/>
                         <Label Content="Default Server Type" Margin="10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalAlignment="Center" Grid.Row="1" Grid.Column="0"/>
                         <ComboBox x:Name="cmbServerType" Margin="10" Grid.Row="1" Grid.Column="1" SelectionChanged="cmbServerType_SelectionChanged"/>
                         <Button x:Name="btnSteamCmdPath" Content="SteamCMD Path" Margin="10" HorizontalAlignment="Stretch" VerticalAlignment="Center" Grid.Row="2" Grid.Column="0" ToolTip="Path to steamcmd.exe" Click="btnSteamCmdPath_Click"/>
-                        <TextBox x:Name="txtSteamCmdPath" ToolTip="Location of steamcmd.exe" Margin="10" TextWrapping="Wrap" VerticalAlignment="Center" IsReadOnly="True" Grid.Row="2" Grid.Column="1"/>
+                        <TextBox x:Name="txtSteamCmdPath" ToolTip="Location of steamcmd.exe" Margin="10" TextWrapping="Wrap" VerticalAlignment="Center" IsReadOnly="True" IsTabStop="False" Grid.Row="2" Grid.Column="1"/>
                     </Grid>
                     <Border Grid.Row="1" Width="Auto" HorizontalAlignment="Left" Margin="10,5,0,10" BorderThickness="1,1,1,1" BorderBrush="{DynamicResource {x:Static SystemColors.WindowFrameBrushKey}}">
                         <Grid>
