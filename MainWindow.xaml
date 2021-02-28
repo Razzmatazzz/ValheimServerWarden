@@ -80,8 +80,23 @@
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <Button x:Name="btnServerPath" Content="Dedicated Server Path" HorizontalAlignment="Left" Margin="10,15,10,15" VerticalAlignment="Center" Click="btnServerPath_Click" Grid.Row="0" ToolTip="Path to valheim_server.exe"/>
-                    <TextBox x:Name="txtServerPath" Margin="170,15,10,15" TextWrapping="Wrap" VerticalAlignment="Center" IsReadOnly="True" Grid.Row="0"/>
+                    <Grid Grid.Row="0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="btnServerPath" Content="Default Server Path" Margin="10" HorizontalAlignment="Stretch" VerticalAlignment="Center" Click="btnServerPath_Click" Grid.Row="0" Grid.Column="0" ToolTip="Path to valheim_server.exe"/>
+                        <TextBox x:Name="txtServerPath" ToolTip="Default dedicated server installation used for new servers" Margin="10" TextWrapping="Wrap" VerticalAlignment="Center" IsReadOnly="True" Grid.Row="0" Grid.Column="1"/>
+                        <Label Content="Default Server Type" Margin="10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalAlignment="Center" Grid.Row="1" Grid.Column="0"/>
+                        <ComboBox x:Name="cmbServerType" Margin="10" Grid.Row="1" Grid.Column="1" SelectionChanged="cmbServerType_SelectionChanged"/>
+                        <Button x:Name="btnSteamCmdPath" Content="SteamCMD Path" Margin="10" HorizontalAlignment="Stretch" VerticalAlignment="Center" Grid.Row="2" Grid.Column="0" ToolTip="Path to steamcmd.exe" Click="btnSteamCmdPath_Click"/>
+                        <TextBox x:Name="txtSteamCmdPath" ToolTip="Location of steamcmd.exe" Margin="10" TextWrapping="Wrap" VerticalAlignment="Center" IsReadOnly="True" Grid.Row="2" Grid.Column="1"/>
+                    </Grid>
                     <Border Grid.Row="1" Width="Auto" HorizontalAlignment="Left" Margin="10,5,0,10" BorderThickness="1,1,1,1" BorderBrush="{DynamicResource {x:Static SystemColors.WindowFrameBrushKey}}">
                         <Grid>
                             <Grid.RowDefinitions>
@@ -99,7 +114,27 @@
                 </Grid>
             </TabItem>
             <TabItem Header="Log">
-                <RichTextBox x:Name="txtLog"></RichTextBox>
+                <RichTextBox x:Name="txtLog" IsReadOnly="True" IsTabStop="False">
+                    <RichTextBox.ContextMenu>
+                        <ContextMenu x:Name="menuLog" Opened="menuLog_Opened">
+                            <MenuItem x:Name="menuLogSelectAll" Header="Select All" Click="menuLogSelectAll_Click">
+                                <MenuItem.Icon>
+                                    <Image Source="Resources/SelectAll_32x.png"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem x:Name="menuLogCopy" Header="Copy" Click="menuLogCopy_Click">
+                                <MenuItem.Icon>
+                                    <Image Source="Resources/Copy_32x.png"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem x:Name="menuLogClear" Header="Clear" Click="menuLogClear_Click">
+                                <MenuItem.Icon>
+                                    <Image Source="Resources/Cancel_32x.png"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </ContextMenu>
+                    </RichTextBox.ContextMenu>
+                </RichTextBox>
             </TabItem>
         </TabControl>
         <StatusBar x:Name="statusbarMain" VerticalAlignment="Bottom" Grid.Row="1">

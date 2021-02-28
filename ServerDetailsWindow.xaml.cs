@@ -44,36 +44,21 @@ namespace ValheimServerWarden
         {
             InitializeComponent();
             this._server = server;
+            txtServerLog.Document.Blocks.Clear();
+            foreach (var i in Enum.GetValues(typeof(ValheimServer.ServerInstallMethod)))
+            {
+                cmbServerType.Items.Add(Enum.GetName(typeof(ValheimServer.ServerInstallMethod), i));
+            }
             RefreshControls();
-            this.Server.Exited += ((object sender, ServerExitedEventArgs e) =>
+            this.Server.LogMessage += ((object sender, ServerLogMessageEventArgs e) =>
             {
-                RefreshControls();
+                this.Dispatcher.Invoke(() =>
+                {
+                    //logMessage($"Server {e.Server.Name}: {e.Message}", e.LogType);
+                    LogMessage(e.Message, e.LogType);
+                });
             });
-            this.Server.PlayerConnected += ((object sender, PlayerEventArgs e) =>
-            {
-                RefreshControls();
-            });
-            this.Server.PlayerDisconnected += ((object sender, PlayerEventArgs e) =>
-            {
-                RefreshControls();
-            });
-            this.Server.PlayerDied += ((object sender, PlayerEventArgs e) =>
-            {
-                RefreshControls();
-            });
-            this.Server.Starting += ((object sender, ServerEventArgs e) =>
-            {
-                RefreshControls();
-            });
-            this.Server.Started += ((object sender, ServerEventArgs e) =>
-            {
-                RefreshControls();
-            });
-            this.Server.StartFailed += ((object sender, ServerEventArgs e) =>
-            {
-                RefreshControls();
-            });
-            Server.Updated += Server_Updated;
+            attachServerEventHandlers();
             ServerToControls();
             _steamPath = null;
             try
@@ -97,6 +82,7 @@ namespace ValheimServerWarden
                 Debug.WriteLine(ex);
             }
             GetExternalIP();
+            LoadLists();
         }
 
         public void RefreshControls()
@@ -150,7 +136,7 @@ namespace ValheimServerWarden
                     btnLog.IsEnabled = (File.Exists(Server.GetLogName()));
                     btnLog.Visibility = (File.Exists(Server.GetLogName())) ? Visibility.Visible : Visibility.Hidden;
 
-                    if (Properties.Settings.Default.SteamCMDPath != null && Properties.Settings.Default.SteamCMDPath.Length > 0 && File.Exists(Properties.Settings.Default.SteamCMDPath) && Properties.Settings.Default.ServerInstallType == "SteamCMD")
+                    if (Properties.Settings.Default.SteamCMDPath != null && Properties.Settings.Default.SteamCMDPath.Length > 0 && File.Exists(Properties.Settings.Default.SteamCMDPath) && Server.InstallMethod == ValheimServer.ServerInstallMethod.SteamCMD)
                     {
                         btnSteamCmd.Visibility = Visibility.Visible;
                     }
@@ -161,15 +147,94 @@ namespace ValheimServerWarden
                 }
                 catch (Exception ex)
                 {
-                    
+                    LogMessage($"Error refreshing controls: {ex.Message}", LogType.Error);
                 }
             });
         }
-
-        private void Server_Updated(object sender, UpdatedEventArgs e)
+        private void attachServerEventHandlers()
         {
-            RefreshControls();
-            ServerToControls();
+            Server.Exited += ((object sender, ServerExitedEventArgs e) =>
+            {
+                RefreshControls();
+            });
+            Server.PlayerConnected += ((object sender, PlayerEventArgs e) =>
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    LogMessage($"Player {e.Player.Name} ({e.Player.SteamID}) connected");
+                });
+                RefreshControls();
+            });
+            Server.PlayerDisconnected += ((object sender, PlayerEventArgs e) =>
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    LogMessage($"Player {e.Player.Name} ({e.Player.SteamID}) disconnected");
+                });
+                RefreshControls();
+            });
+            Server.PlayerDied += ((object sender, PlayerEventArgs e) =>
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    LogMessage($"Player {e.Player.Name} ({e.Player.SteamID}) died");
+                });
+                RefreshControls();
+            });
+            Server.FailedPassword += ((object sender, FailedPasswordEventArgs e) =>
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    LogMessage($"Failed password attempt for steamid {e.SteamID}.");
+                });
+                RefreshControls();
+            });
+            Server.Starting += ((object sender, ServerEventArgs e) =>
+            {
+                RefreshControls();
+            });
+            Server.Started += ((object sender, ServerEventArgs e) =>
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    LogMessage($"Server started.", LogType.Success);
+                });
+                RefreshControls();
+            });
+            Server.StartFailed += ((object sender, ServerEventArgs e) =>
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    LogMessage($"Server failed to start.", LogType.Error);
+                });
+                RefreshControls();
+            });
+            Server.Exited += ((object sender, ServerExitedEventArgs e) =>
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    if (e.ExitCode == 0 || e.ExitCode == -1073741510)
+                    {
+                        LogMessage($"Server stopped.");
+                    }
+                    else
+                    {
+                        LogMessage($"Server exited with code {e.ExitCode}.", LogType.Error);
+                    }
+                });
+            });
+            Server.RandomServerEvent += ((object sender, RandomServerEventArgs e) =>
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    LogMessage($"Random event {e.EventName}.");
+                });
+            });
+            Server.Updated += ((object sender, UpdatedEventArgs e) =>
+            {
+                RefreshControls();
+                ServerToControls();
+            });
         }
 
         private void ServerToControls()
@@ -182,6 +247,8 @@ namespace ValheimServerWarden
                 txtPassword.Text = Server.Password;
                 txtSaveDir.Text = Server.SaveDir;
                 chkPublic.IsChecked = Server.Public;
+                txtServerDir.Text = Server.InstallPath;
+                cmbServerType.SelectedIndex = (int)Server.InstallMethod;
                 chkAutostart.IsChecked = Server.Autostart;
                 chkLog.IsChecked = Server.Log;
 
@@ -199,7 +266,7 @@ namespace ValheimServerWarden
             }
             catch (Exception ex)
             {
-
+                LogMessage($"Error reading server settings: {ex.Message}", LogType.Error);
             }
         }
 
@@ -218,6 +285,41 @@ namespace ValheimServerWarden
                     Debug.WriteLine(ex);
                 }
             }).Start();
+        }
+
+        private void LoadLists()
+        {
+            try
+            {
+                string savedir;
+                if (Server.SaveDir.Length > 0)
+                {
+                    savedir = Server.SaveDir;
+                }
+                else
+                {
+                    savedir = ValheimServer.DefaultSaveDir;
+                }
+                txtAdminList.Text = "";
+                txtBannedList.Text = "";
+                txtPermittedList.Text = "";
+                if (File.Exists(savedir+"\\adminlist.txt"))
+                {
+                    txtAdminList.Text = File.ReadAllText(savedir + "\\adminlist.txt");
+                }
+                if (File.Exists(savedir + "\\bannedlist.txt"))
+                {
+                    txtBannedList.Text = File.ReadAllText(savedir + "\\bannedlist.txt");
+                }
+                if (File.Exists(savedir + "\\permittedlist.txt"))
+                {
+                    txtPermittedList.Text = File.ReadAllText(savedir + "\\permittedlist.txt");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogMessage($"Error loading admin/banned/permitted list: {ex.Message}");
+            }
         }
 
         private void btnStart_Click(object sender, RoutedEventArgs e)
@@ -304,6 +406,8 @@ namespace ValheimServerWarden
             Server.Password = txtPassword.Text;
             Server.SaveDir = txtSaveDir.Text;
             Server.Public = chkPublic.IsChecked.GetValueOrDefault();
+            Server.InstallPath = txtServerDir.Text;
+            Server.InstallMethod = (ValheimServer.ServerInstallMethod)cmbServerType.SelectedIndex;
             Server.Autostart = chkAutostart.IsChecked.GetValueOrDefault();
             Server.Log = chkLog.IsChecked.GetValueOrDefault();
             int restartHours = Server.RestartHours;
@@ -331,6 +435,7 @@ namespace ValheimServerWarden
                 var mmb = new ModernMessageBox(this);
                 mmb.Show("You must restart the server for the server name, port, world, password, save folder, or public status to change.", "Server Restart", MessageBoxButton.OK, MessageBoxImage.Information);
             }
+            LoadLists();
         }
 
         private void btnSaveDir_Click(object sender, RoutedEventArgs e)
@@ -338,7 +443,8 @@ namespace ValheimServerWarden
             string saveDirPath = txtSaveDir.Text;
             System.Windows.Forms.FolderBrowserDialog openFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
             openFolderDialog.SelectedPath = saveDirPath;
-            openFolderDialog.Description = "Select your save directory";
+            openFolderDialog.UseDescriptionForTitle = true;
+            openFolderDialog.Description = "Select save folder";
             System.Windows.Forms.DialogResult result = openFolderDialog.ShowDialog();
             if (result == System.Windows.Forms.DialogResult.OK)
             {
@@ -347,13 +453,13 @@ namespace ValheimServerWarden
                 {
                     return;
                 }
-                if (!Directory.Exists($@"{folderName}\worlds"))
+                /*if (!Directory.Exists($@"{folderName}\worlds"))
                 {
                     var mmb = new ModernMessageBox(this);
                     mmb.Show("Please select the folder where your Valheim save files are located. This folder should contain a \"worlds\" folder.",
                                      "Invalid Folder", MessageBoxButton.OK, MessageBoxImage.Warning, MessageBoxResult.OK);
                     return;
-                }
+                }*/
                 txtSaveDir.Text = folderName;
             }
             RefreshControls();
@@ -438,7 +544,7 @@ namespace ValheimServerWarden
             {
                 var process = new Process();
                 process.StartInfo.FileName = Properties.Settings.Default.SteamCMDPath;
-                process.StartInfo.Arguments = $"+login anonymous +force_install_dir \"{(new FileInfo(Properties.Settings.Default.ServerFilePath).Directory.FullName)}\" +app_update {ValheimServer.SteamID} +validate +quit";
+                process.StartInfo.Arguments = $"+login anonymous +force_install_dir \"{(new FileInfo(Server.InstallPath).Directory.FullName)}\" +app_update {ValheimServer.SteamID} +quit";
                 //process.EnableRaisingEvents = true;
                 process.Start();
                 process.WaitForExit();
@@ -447,6 +553,214 @@ namespace ValheimServerWarden
             {
                 var mmb = new ModernMessageBox(this);
                 mmb.Show("Please stop the server before updating.", "Stop Server to Update", MessageBoxButton.OK, MessageBoxImage.Warning, MessageBoxResult.OK);
+            }
+        }
+
+        public void LogMessage(string msg, LogType lt)
+        {
+            Color color = ((SolidColorBrush)this.Foreground).Color;
+            if (lt == LogType.Success)
+            {
+                color = Color.FromRgb(50, 200, 50);
+            }
+            else if (lt == LogType.Error)
+            {
+                color = Color.FromRgb(200, 50, 50);
+            }
+            LogMessage(msg, color);
+        }
+
+        public void LogMessage(string msg)
+        {
+            LogMessage(msg, LogType.Normal);
+        }
+
+        public void LogMessage(string msg, Color color)
+        {
+            try
+            {
+                Run run = new Run(DateTime.Now.ToString() + ": " + msg);
+                run.Foreground = new SolidColorBrush(color);
+                Paragraph paragraph = new Paragraph(run);
+                paragraph.Margin = new Thickness(0);
+                if (txtServerLog.Document.Blocks.Count > 0)
+                {
+                    txtServerLog.Document.Blocks.InsertBefore(txtServerLog.Document.Blocks.FirstBlock, paragraph);
+                }
+                else
+                {
+                    txtServerLog.Document.Blocks.Add(paragraph);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error logging message: {ex.Message}");
+            }
+        }
+        private void Window_ContentRendered(object sender, EventArgs e)
+        {
+            tabsServer.SelectedIndex = 1;
+            UpdateLayout();
+            SizeToContent = SizeToContent.Manual;
+            tabsServer.SelectedIndex = 0;
+        }
+
+        private void btnServerDir_Click(object sender, RoutedEventArgs e)
+        {
+            var serverpath = new FileInfo(txtServerDir.Text).Directory.FullName;
+            var openFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
+            if (Directory.Exists(serverpath))
+            {
+                openFolderDialog.SelectedPath = serverpath;
+            }
+            openFolderDialog.UseDescriptionForTitle = true;
+            openFolderDialog.Description = "Server installation folder";
+            var result = openFolderDialog.ShowDialog();
+            if (result == System.Windows.Forms.DialogResult.OK)
+            {
+                var folderName = openFolderDialog.SelectedPath;
+                if (folderName.Equals(txtServerDir.Text))
+                {
+                    return;
+                }
+                if (!File.Exists($@"{folderName}\valheim_server.exe") && cmbServerType.SelectedIndex == (int)ValheimServer.ServerInstallMethod.SteamCMD && File.Exists(Properties.Settings.Default.SteamCMDPath))
+                {
+                    var mmb = new ModernMessageBox(this);
+                    var install = mmb.Show("valheim_server.exe was not found in this folder, do you want to install it via SteamCMD?",
+                                     "Install Valheim dedicated server?", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+                    if (install == MessageBoxResult.Yes)
+                    {
+                        try
+                        {
+                            var process = new Process();
+                            process.StartInfo.FileName = Properties.Settings.Default.SteamCMDPath;
+                            process.StartInfo.Arguments = $"+login anonymous +force_install_dir \"{folderName}\" +app_update {ValheimServer.SteamID} +validate +quit";
+                            process.EnableRaisingEvents = true;
+                            //process.Exited += SteamCmdProcess_Exited;
+                            process.Start();
+                            process.WaitForExit();
+                        }
+                        catch (Exception ex)
+                        {
+                            LogMessage($"Error installing dedicated server: {ex.Message}", LogType.Error);
+                        }
+                    }
+                }
+                folderName += "\\valheim_server.exe";
+                txtServerDir.Text = folderName;
+            }
+            RefreshControls();
+        }
+
+        private void menuServerDirReset_Click(object sender, RoutedEventArgs e)
+        {
+            txtServerDir.Text = Properties.Settings.Default.ServerFilePath;
+        }
+
+        private void txtServerDir_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+        {
+            if (!File.Exists(txtServerDir.Text) && cmbServerType.SelectedIndex == (int)ValheimServer.ServerInstallMethod.SteamCMD && File.Exists(Properties.Settings.Default.SteamCMDPath))
+            {
+                menuServerDirInstall.IsEnabled = true;
+                menuServerDirInstall.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                menuServerDirInstall.IsEnabled = false;
+                menuServerDirInstall.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void menuLogClear_Click(object sender, RoutedEventArgs e)
+        {
+            txtServerLog.Document.Blocks.Clear();
+        }
+
+        private void menuLogSelectAll_Click(object sender, RoutedEventArgs e)
+        {
+            txtServerLog.SelectAll();
+        }
+
+        private void menuLog_Opened(object sender, RoutedEventArgs e)
+        {
+            if (txtServerLog.Selection.IsEmpty)
+            {
+                menuLogCopy.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                menuLogCopy.Visibility = Visibility.Visible;
+            }
+        }
+
+        private void menuLogCopy_Click(object sender, RoutedEventArgs e)
+        {
+            Clipboard.SetText(txtServerLog.Selection.Text);
+        }
+
+        private void btnSaveAdminList_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string savedir;
+                if (Server.SaveDir.Length > 0)
+                {
+                    savedir = Server.SaveDir;
+                }
+                else
+                {
+                    savedir = ValheimServer.DefaultSaveDir;
+                }
+                File.WriteAllTextAsync(savedir + "\\adminlist.txt", txtAdminList.Text);
+                LogMessage("Admin list updated.", LogType.Success);
+            }
+            catch (Exception ex)
+            {
+                LogMessage($"Error updating admin list: {ex.Message}", LogType.Error);
+            }
+        }
+
+        private void btnSaveBannedList_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string savedir;
+                if (Server.SaveDir.Length > 0)
+                {
+                    savedir = Server.SaveDir;
+                }
+                else
+                {
+                    savedir = ValheimServer.DefaultSaveDir;
+                }
+                File.WriteAllTextAsync(savedir + "\\bannedlist.txt", txtBannedList.Text);
+                LogMessage("Banned list updated.", LogType.Success);
+            }
+            catch (Exception ex)
+            {
+                LogMessage($"Error updating banned list: {ex.Message}", LogType.Error);
+            }
+        }
+
+        private void btnSavePermittedList_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string savedir;
+                if (Server.SaveDir.Length > 0)
+                {
+                    savedir = Server.SaveDir;
+                }
+                else
+                {
+                    savedir = ValheimServer.DefaultSaveDir;
+                }
+                File.WriteAllTextAsync(savedir + "\\permittedlist.txt", txtPermittedList.Text);
+                LogMessage("Permitted list updated.", LogType.Success);
+            }
+            catch (Exception ex)
+            {
+                LogMessage($"Error updating permitted list: {ex.Message}", LogType.Error);
             }
         }
     }

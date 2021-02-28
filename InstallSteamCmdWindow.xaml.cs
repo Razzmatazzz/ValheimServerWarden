@@ -67,7 +67,8 @@ namespace ValheimServerWarden
         {
             System.Windows.Forms.FolderBrowserDialog openFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
             openFolderDialog.SelectedPath = new FileInfo(txtSteamCMDPath.Text).DirectoryName;
-            openFolderDialog.Description = "Select the folder where SteamCMD is or will be installed";
+            openFolderDialog.UseDescriptionForTitle = true;
+            openFolderDialog.Description = "SteamCMD installation folder";
             System.Windows.Forms.DialogResult result = openFolderDialog.ShowDialog();
             if (result == System.Windows.Forms.DialogResult.OK)
             {
@@ -113,7 +114,8 @@ namespace ValheimServerWarden
         {
             System.Windows.Forms.FolderBrowserDialog openFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
             openFolderDialog.SelectedPath = new FileInfo(txtServerPath.Text).DirectoryName;
-            openFolderDialog.Description = "Select the folder where Valheim dedicated server will be installed";
+            openFolderDialog.UseDescriptionForTitle = true;
+            openFolderDialog.Description = "Folder where Valheim dedicated server will be installed";
             System.Windows.Forms.DialogResult result = openFolderDialog.ShowDialog();
             if (result == System.Windows.Forms.DialogResult.OK)
             {
@@ -139,7 +141,7 @@ namespace ValheimServerWarden
             }
             else
             {
-                Properties.Settings.Default.ServerInstallType = "SteamCMD";
+                Properties.Settings.Default.ServerInstallType = (int)ValheimServer.ServerInstallMethod.SteamCMD;
                 Properties.Settings.Default.ServerFilePath = txtServerPath.Text + "\\valheim_server.exe";
                 Properties.Settings.Default.SteamCMDPath = txtSteamCMDPath.Text;
                 Properties.Settings.Default.Save();
@@ -154,7 +156,7 @@ namespace ValheimServerWarden
             {
                 if (File.Exists(txtServerPath.Text + "\\valheim_server.exe"))
                 {
-                    Properties.Settings.Default.ServerInstallType = "SteamCMD";
+                    Properties.Settings.Default.ServerInstallType = (int)ValheimServer.ServerInstallMethod.SteamCMD;
                     Properties.Settings.Default.ServerFilePath = txtServerPath.Text + "\\valheim_server.exe";
                     Properties.Settings.Default.SteamCMDPath = txtSteamCMDPath.Text;
                     Properties.Settings.Default.Save();

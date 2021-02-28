@@ -85,10 +85,10 @@ namespace ValheimServerWarden.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("Steam")]
-        public string ServerInstallType {
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int ServerInstallType {
             get {
-                return ((string)(this["ServerInstallType"]));
+                return ((int)(this["ServerInstallType"]));
             }
             set {
                 this["ServerInstallType"] = value;

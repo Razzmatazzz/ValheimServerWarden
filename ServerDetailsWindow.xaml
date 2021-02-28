@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         xmlns:ui="http://schemas.modernwpf.com/2019"
         ui:WindowHelper.UseModernWindowStyle="True"
-        Title="ServerDetailsWindow" Height="Auto" Width="800" SizeToContent="Height">
+        Title="ServerDetailsWindow" Height="Auto" Width="800" SizeToContent="Height" ContentRendered="Window_ContentRendered">
     <Window.Resources>
         <Image x:Key="Start" Source="Resources/StartWithoutDebug_32x.png"/>
         <Image x:Key="StartGrey" Source="Resources/StartWithoutDebug_grey_32x.png"/>
@@ -17,6 +17,8 @@
         <Image x:Key="ConnectGrey" Source="Resources/Connect_grey_32x.png"/>
         <Image x:Key="Connected" Source="Resources/Connected_32x.png"/>
         <Image x:Key="Unconnected" Source="Resources/Unconnected_32x.png"/>
+        <Image x:Key="Install" Source="Resources/DownloadFolder_32x.png"/>
+        <Image x:Key="InstallGrey" Source="Resources/DownloadFolder_grey_32x.png"/>
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -90,84 +92,207 @@
                 </Button>
             </Grid>
         </Grid>
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition/>
-            </Grid.ColumnDefinitions>
-            <Grid Grid.Column="0">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="3"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="100"/>
-                    <ColumnDefinition/>
-                </Grid.ColumnDefinitions>
-                <Label Content="Status: " HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Center" Grid.Row="0"/>
-                <Label x:Name="lblStatus" Content="" HorizontalAlignment="Left" Margin="0" VerticalAlignment="Center" Grid.Row="0" Grid.Column="1"/>
-                <Label Content="Start time:" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Center" Grid.Row="1" Grid.Column="0"/>
-                <Label x:Name="lblStartTime" Content="" HorizontalAlignment="Left" Margin="0" VerticalAlignment="Center" Grid.Row="1" Grid.Column="1"/>
-                <Separator Height="3" Margin="10,0,10,0" VerticalAlignment="Top" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"/>
-                <Label Content="Server Name" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Center" Grid.Row="3" Grid.Column="0"/>
-                <TextBox x:Name="txtName" TextWrapping="Wrap" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="3" Grid.Column="1"/>
-                <Label Content="Port" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Center" Grid.Row="4" Grid.Column="0"/>
-                <TextBox x:Name="txtPort" HorizontalAlignment="Left" Margin="0,5,10,5" Text="" TextWrapping="Wrap" VerticalAlignment="Center" Width="84" Grid.Row="4" Grid.Column="1"/>
-                <Label Content="World" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Center" Grid.Row="5" Grid.Column="0"/>
-                <TextBox x:Name="txtWorld" TextWrapping="Wrap" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="5" Grid.Column="1"/>
-                <Label Content="Password" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Center" Grid.Row="6" Grid.Column="0"/>
-                <TextBox x:Name="txtPassword" Margin="0,5,10,5" TextWrapping="Wrap" VerticalAlignment="Center" Grid.Row="6" Grid.Column="1"/>
-                <Button x:Name="btnSaveDir" Content="Save Folder" Margin="5,0,0,0" VerticalAlignment="Center" Grid.Row="7" Grid.Column="0" ToolTip="Change folder where your world saves are stored" Click="btnSaveDir_Click"/>
-                <TextBox x:Name="txtSaveDir" Margin="0,5,10,5" TextWrapping="Wrap" VerticalAlignment="Center" Grid.Row="7" Grid.Column="1" IsReadOnly="True">
-                    <TextBox.ContextMenu>
-                        <ContextMenu>
-                            <MenuItem x:Name="menuSaveDirReset" Header="Reset to default" Click="menuSaveDirReset_Click">
-                                <MenuItem.Icon>
-                                    <Image Source="Resources/Cancel_32x.png"/>
-                                </MenuItem.Icon>
-                            </MenuItem>
-                        </ContextMenu>
-                    </TextBox.ContextMenu>
-                </TextBox>
-                <CheckBox x:Name="chkPublic" Content="Public" Margin="5,5,0,5" VerticalAlignment="Top" Grid.Row="8" Grid.Column="0" ToolTip="Whether server is listed in the in-game community server list"/>
-                <CheckBox x:Name="chkAutostart" Content="Autostart" Margin="5,5,0,5" VerticalAlignment="Top" Grid.Row="9" Grid.Column="0" ToolTip="Start server automatically on app start"/>
-                <CheckBox x:Name="chkLog" Content="Create server log file" Margin="0,5,0,5" VerticalAlignment="Top" Grid.Row="9" Grid.Column="1"/>
-                <CheckBox x:Name="chkAutoRestart" Content="Restart every" Margin="5,5,0,5" VerticalAlignment="Center" Grid.Row="10" Grid.ColumnSpan="2" ToolTip="Automatically restart the server once it's been up for this amount of time if there are no players connected" Checked="chkAutoRestart_Checked" Unchecked="chkAutoRestart_Checked"/>
-                <TextBox x:Name="txtRestartInterval" HorizontalAlignment="Left" Margin="125,5,0,5" TextWrapping="Wrap" VerticalAlignment="Center" Grid.Row="10" Grid.ColumnSpan="2" Width="58" IsEnabled="False"/>
-                <Label Content="hours" HorizontalAlignment="Left" Margin="200,0,0,0" VerticalAlignment="Center" Grid.Row="10" Grid.ColumnSpan="2"/>
-                <Button x:Name="btnSave" Content="Save" Margin="10,10,0,10" HorizontalAlignment="Left" VerticalAlignment="Center" Click="btnSave_Click" Grid.Row="11" Grid.Column="0"/>
-            </Grid>
-            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"/>
-            <Grid Grid.Column="2">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-                <Label Content="Players: " HorizontalAlignment="Left" Margin="5,5,0,5" VerticalAlignment="Top" Grid.Row="0"/>
-                <Label x:Name="lblPlayerCount" Content="" HorizontalAlignment="Left" Margin="60,5,0,5" VerticalAlignment="Top" Grid.Row="0"/>
-                <DataGrid x:Name="dgPlayers" CanUserDeleteRows="False" IsReadOnly="True" Grid.Row="1" AutoGeneratingColumn="dgPlayers_AutoGeneratingColumn" ContextMenuOpening="dgPlayers_ContextMenuOpening">
-                    <DataGrid.ContextMenu>
-                        <ContextMenu>
-                            <MenuItem x:Name="menuCopySteamId" Header="Copy SteamID" Click="menuCopySteamId_Click">
-                                <MenuItem.Icon>
-                                    <Image Source="Resources/Copy_32x.png"/>
-                                </MenuItem.Icon>
-                            </MenuItem>
-                        </ContextMenu>
-                    </DataGrid.ContextMenu>
-                </DataGrid>
-            </Grid>
-        </Grid>
+        <TabControl x:Name="tabsServer" Grid.Row="1">
+            <TabItem Header="Status" Background="White">
+                <Grid x:Name="gridStatus" Height="Auto">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <Grid Grid.Column="0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <Label Content="Status: " HorizontalAlignment="Left" Margin="10,10,0,5" VerticalAlignment="Center" Grid.Row="0"/>
+                        <Label x:Name="lblStatus" Content="" HorizontalAlignment="Left" Margin="0,10,0,5" VerticalAlignment="Center" Grid.Row="0" Grid.Column="1"/>
+                        <Label Content="Start time:" HorizontalAlignment="Left" Margin="10,5,10,10" VerticalAlignment="Center" Grid.Row="1" Grid.Column="0"/>
+                        <Label x:Name="lblStartTime" Content="" HorizontalAlignment="Left" Margin="0,5,0,10" VerticalAlignment="Center" Grid.Row="1" Grid.Column="1"/>
+                        <RichTextBox x:Name="txtServerLog" Grid.Row="2" Grid.ColumnSpan="2" IsReadOnly="True" IsTabStop="False">
+                            <RichTextBox.ContextMenu>
+                                <ContextMenu x:Name="menuLog" Opened="menuLog_Opened">
+                                    <MenuItem x:Name="menuLogSelectAll" Header="Select All" Click="menuLogSelectAll_Click">
+                                        <MenuItem.Icon>
+                                            <Image Source="Resources/SelectAll_32x.png"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem x:Name="menuLogCopy" Header="Copy" Click="menuLogCopy_Click">
+                                            <MenuItem.Icon>
+                                                <Image Source="Resources/Copy_32x.png"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                    <MenuItem x:Name="menuLogClear" Header="Clear" Click="menuLogClear_Click">
+                                        <MenuItem.Icon>
+                                            <Image Source="Resources/Cancel_32x.png"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </RichTextBox.ContextMenu>
+                        </RichTextBox>
+                    </Grid>
+                    <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"/>
+                    <Grid Grid.Column="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Label Content="Players: " HorizontalAlignment="Left" Margin="10,10,0,5" VerticalAlignment="Top" Grid.Row="0"/>
+                        <Label x:Name="lblPlayerCount" Content="" HorizontalAlignment="Left" Margin="65,10,0,5" VerticalAlignment="Top" Grid.Row="0"/>
+                        <DataGrid x:Name="dgPlayers" CanUserDeleteRows="False" IsReadOnly="True" Grid.Row="1" AutoGeneratingColumn="dgPlayers_AutoGeneratingColumn" ContextMenuOpening="dgPlayers_ContextMenuOpening">
+                            <DataGrid.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem x:Name="menuCopySteamId" Header="Copy SteamID" Click="menuCopySteamId_Click">
+                                        <MenuItem.Icon>
+                                            <Image Source="Resources/Copy_32x.png"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </DataGrid.ContextMenu>
+                        </DataGrid>
+                    </Grid>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Settings">
+                <Grid x:Name="gridSettings">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Label Content="Runtime Options" Grid.Row="0" Margin="10,10,0,0" ToolTip="These settings are used as parameters when the server is started"/>
+                    <Border Grid.Row="1" HorizontalAlignment="Stretch" Height="Auto" Margin="10,5,10,10" BorderThickness="1,1,1,1" BorderBrush="{DynamicResource {x:Static SystemColors.WindowFrameBrushKey}}">
+                        <Grid Height="Auto">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                            <Label Content="Server Name" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Center" Grid.Row="0" Grid.Column="0"/>
+                            <TextBox x:Name="txtName" TextWrapping="Wrap" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="0" Grid.Column="1"/>
+                            <Label Content="Port" HorizontalAlignment="Left" Margin="10,0,10,0" VerticalAlignment="Center" Grid.Row="0" Grid.Column="2"/>
+                            <TextBox x:Name="txtPort" HorizontalAlignment="Left" Margin="0,5,10,5" Text="" TextWrapping="Wrap" VerticalAlignment="Center" Width="84" Grid.Row="0" Grid.Column="3"/>
+                            <Label Content="World" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Center" Grid.Row="1" Grid.Column="0"/>
+                            <TextBox x:Name="txtWorld" TextWrapping="Wrap" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="1" Grid.Column="1"/>
+                            <Label Content="Password" HorizontalAlignment="Left" Margin="10,0,10,0" VerticalAlignment="Center" Grid.Row="1" Grid.Column="2"/>
+                            <TextBox x:Name="txtPassword" Margin="0,5,10,5" TextWrapping="Wrap" VerticalAlignment="Center" Grid.Row="1" Grid.Column="3"/>
+                            <Button x:Name="btnSaveDir" Content="Save Folder" Margin="5,0,5,0" VerticalAlignment="Center" Grid.Row="2" Grid.Column="0" ToolTip="Change folder where your world saves are stored" Click="btnSaveDir_Click"/>
+                            <TextBox x:Name="txtSaveDir" ToolTip="Omitting this option uses the default Valheim save path" Margin="0,5,10,5" TextWrapping="Wrap" VerticalAlignment="Center" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" IsReadOnly="True" IsTabStop="False">
+                                <TextBox.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem x:Name="menuSaveDirReset" Header="Reset to default" Click="menuSaveDirReset_Click">
+                                            <MenuItem.Icon>
+                                                <Image Source="Resources/Cancel_32x.png"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </TextBox.ContextMenu>
+                            </TextBox>
+                            <CheckBox x:Name="chkPublic" Content="Public" Margin="5,5,0,5" VerticalAlignment="Top" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" ToolTip="Whether server is listed in the in-game community server list"/>
+                        </Grid>
+                    </Border>
+                    <Label Content="Installation Settings" Grid.Row="2" Margin="10,5,0,0" ToolTip="These settings relate to the location and method of the dedicated serer installation"/>
+                    <Border Grid.Row="3" HorizontalAlignment="Stretch" Margin="10,5,10,10" BorderThickness="1,1,1,1" BorderBrush="{DynamicResource {x:Static SystemColors.WindowFrameBrushKey}}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button x:Name="btnServerDir" Content="Server Path" Margin="5,0,5,0" HorizontalAlignment="Stretch" VerticalAlignment="Center" Grid.Row="0" Grid.Column="0" ToolTip="Change the dedicated server installation folder" Click="btnServerDir_Click"/>
+                            <TextBox x:Name="txtServerDir" ToolTip="Path to .exe used to run this server" Margin="0,5,10,5" TextWrapping="Wrap" VerticalAlignment="Center" Grid.Row="0" Grid.Column="1" IsReadOnly="True" IsTabStop="False" ContextMenuOpening="txtServerDir_ContextMenuOpening">
+                                <TextBox.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem x:Name="menuServerDirReset" Header="Reset to default" Click="menuServerDirReset_Click">
+                                            <MenuItem.Icon>
+                                                <Image Source="Resources/Cancel_32x.png"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem x:Name="menuServerDirInstall" Header="Install" ToolTip="Install the dedicated server to this location">
+                                            <MenuItem.Icon>
+                                                <DynamicResource ResourceKey="Install"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </TextBox.ContextMenu>
+                            </TextBox>
+                            <Label Content="Install Type" HorizontalAlignment="Left" Margin="10,0,10,0" VerticalAlignment="Center" Grid.Row="1" Grid.Column="0"/>
+                            <ComboBox x:Name="cmbServerType" Margin="0,5" VerticalAlignment="Center" Grid.Row="1" Grid.Column="1"/>
+                        </Grid>
+                    </Border>
+                    <Label Content="Management Settings" Grid.Row="4" Margin="10,5,0,0"/>
+                    <Border Grid.Row="5" HorizontalAlignment="Stretch" Margin="10,5,10,10" BorderThickness="1,1,1,1" BorderBrush="{DynamicResource {x:Static SystemColors.WindowFrameBrushKey}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <CheckBox x:Name="chkAutostart" Content="Autostart" Margin="5,5,0,5" VerticalAlignment="Top" Grid.Column="0" ToolTip="Start server automatically on app start"/>
+                            <CheckBox x:Name="chkLog" Content="Create server log file" Margin="0,5,15,5" VerticalAlignment="Top" Grid.Column="1"/>
+                            <CheckBox x:Name="chkAutoRestart" Content="Restart every" Margin="5,5,0,5" VerticalAlignment="Center" Grid.Column="2" Grid.ColumnSpan="2" ToolTip="Automatically restart the server once it's been up for this amount of time if there are no players connected" Checked="chkAutoRestart_Checked" Unchecked="chkAutoRestart_Checked"/>
+                            <TextBox x:Name="txtRestartInterval" HorizontalAlignment="Left" Margin="125,5,0,5" TextWrapping="Wrap" VerticalAlignment="Center" Grid.Column="2" Grid.ColumnSpan="2" Width="58" IsEnabled="False"/>
+                            <Label Content="hours" HorizontalAlignment="Left" Margin="200,0,0,0" VerticalAlignment="Center" Grid.Column="2" Grid.ColumnSpan="2"/>
+                        </Grid>
+                    </Border>
+                    <Button x:Name="btnSave" Content="Save" Margin="0,10" HorizontalAlignment="Center" VerticalAlignment="Center" Click="btnSave_Click" Grid.Row="6"/>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Admins">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Label Content="SteamIDs of players who have admin access on the server." Margin="10" Grid.Row="0"/>
+                    <TextBox x:Name="txtAdminList" Grid.Row="1" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"></TextBox>
+                    <Button x:Name="btnSaveAdminList" Content="Save" Margin="0,10" HorizontalAlignment="Center" Grid.Row="2" Click="btnSaveAdminList_Click"/>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Banned">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Label Content="SteamIDs of players who are banned from the server." Margin="10" Grid.Row="0"/>
+                    <TextBox x:Name="txtBannedList" Grid.Row="1" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"></TextBox>
+                    <Button x:Name="btnSaveBannedList" Content="Save" Margin="0,10" HorizontalAlignment="Center" Grid.Row="2" Click="btnSaveBannedList_Click"/>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Whitelist">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="SteamIDs of players who are whitelisted for the server. Note: one player being whitelisted will prevent any non-whitelisted player from joining." TextWrapping="Wrap" Margin="10" Grid.Row="0"/>
+                    <TextBox x:Name="txtPermittedList" Grid.Row="1" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"></TextBox>
+                    <Button x:Name="btnSavePermittedList" Content="Save" Margin="0,10" HorizontalAlignment="Center" Grid.Row="2" Click="btnSavePermittedList_Click"/>
+                </Grid>
+            </TabItem>
+        </TabControl>
     </Grid>
 </Window>

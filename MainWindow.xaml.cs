@@ -71,11 +71,16 @@ namespace ValheimServerWarden
                 radThemeLight.IsChecked = true;
                 radThemeLight_Checked(null, null);
             }
-            txtLog.IsReadOnly = true;
             txtLog.Document.Blocks.Clear();
             logMessage($"Version {typeof(MainWindow).Assembly.GetName().Version}");
             CheckServerPath();
             txtServerPath.Text = Properties.Settings.Default.ServerFilePath;
+            txtSteamCmdPath.Text = Properties.Settings.Default.SteamCMDPath;
+            foreach (var i in Enum.GetValues(typeof(ValheimServer.ServerInstallMethod)))
+            {
+                cmbServerType.Items.Add(Enum.GetName(typeof(ValheimServer.ServerInstallMethod), i));
+            }
+            cmbServerType.SelectedIndex = Properties.Settings.Default.ServerInstallType;
             chkAutoCheckUpdate.IsChecked = Properties.Settings.Default.AutoCheckUpdate;
             if (Properties.Settings.Default.AutoCheckUpdate)
             {
@@ -211,7 +216,7 @@ namespace ValheimServerWarden
                                          "Restart Required", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
                                 Process.Start(fullSteamPath, $"-applaunch {ValheimServer.SteamID}");
                                 logMessage("Please restart this app once the Valheim dedicated server finishes installing.");
-                                Properties.Settings.Default.ServerInstallType = "Steam";
+                                Properties.Settings.Default.ServerInstallType = (int)ValheimServer.ServerInstallMethod.Steam;
                                 Properties.Settings.Default.Save();
                                 return;
                             }
@@ -245,7 +250,7 @@ namespace ValheimServerWarden
                         }
                     }
                     logMessage("Valid path for dedicated server not found. Please set manually in settings.");
-                    Properties.Settings.Default.ServerInstallType = "Manual";
+                    Properties.Settings.Default.ServerInstallType = (int)ValheimServer.ServerInstallMethod.Manual;
                     Properties.Settings.Default.Save();
                 }
             }
@@ -480,6 +485,7 @@ namespace ValheimServerWarden
             try
             {
                 ValheimServer s = new ValheimServer();
+                s.InstallMethod = (ValheimServer.ServerInstallMethod)Properties.Settings.Default.ServerInstallType;
                 attachServerEventListeners(s);
                 servers.Add(s);
                 RefreshDataGrid();
@@ -732,7 +738,14 @@ namespace ValheimServerWarden
                 run.Foreground = new SolidColorBrush(color);
                 Paragraph paragraph = new Paragraph(run);
                 paragraph.Margin = new Thickness(0);
-                txtLog.Document.Blocks.Add(paragraph);
+                if (txtLog.Document.Blocks.Count > 0)
+                {
+                    txtLog.Document.Blocks.InsertBefore(txtLog.Document.Blocks.FirstBlock, paragraph);
+                }
+                else
+                {
+                    txtLog.Document.Blocks.Add(paragraph);
+                }
                 if (msg.Contains('\n'))
                 {
                     lblLastMessage.Content = msg.Split('\n')[0];
@@ -794,7 +807,9 @@ namespace ValheimServerWarden
                 e.Column.Header.Equals("DiscordWebhook") ||
                 e.Column.Header.Equals("DefaultWebhookMessages") ||
                 e.Column.Header.Equals("DiscordWebhookMessages") ||
-                e.Column.Header.Equals("Public"))
+                e.Column.Header.Equals("Public") ||
+                e.Column.Header.Equals("InstallMethod") ||
+                e.Column.Header.Equals("InstallPath"))
             {
                 e.Cancel = true;
             }
@@ -1086,6 +1101,95 @@ namespace ValheimServerWarden
         private void lblReportBug_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             Process.Start("cmd", "/C start https://github.com/Razzmatazzz/ValheimServerWarden/issues");
+        }
+
+        private void btnSteamCmdPath_Click(object sender, RoutedEventArgs e)
+        {
+            var filepath = new FileInfo(txtSteamCmdPath.Text).Directory.FullName;
+            var openFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
+            if (Directory.Exists(filepath))
+            {
+                openFolderDialog.SelectedPath = filepath;
+            }
+            openFolderDialog.UseDescriptionForTitle = true;
+            openFolderDialog.Description = "Select SteamCMD installation folder";
+            var result = openFolderDialog.ShowDialog();
+            if (result == System.Windows.Forms.DialogResult.OK)
+            {
+                var folderName = openFolderDialog.SelectedPath;
+                if (folderName.Equals(txtSteamCmdPath.Text))
+                {
+                    return;
+                }
+                if (!File.Exists($@"{folderName}\steamcmd.exe"))
+                {
+                    var mmb = new ModernMessageBox(this);
+                    var install = mmb.Show("steamcmd.exe was not found in this folder, do you want to install it?",
+                                     "Install SteamCMD?", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+                    if (install == MessageBoxResult.Yes)
+                    {
+                        try
+                        {
+                            using (WebClient webClient = new WebClient())
+                            {
+                                webClient.DownloadFile("https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip", "steamcmd.zip");
+                            }
+                            System.IO.Compression.ZipFile.ExtractToDirectory("steamcmd.zip", folderName);
+                            File.Delete("steamcmd.zip");
+                        }
+                        catch (Exception ex)
+                        {
+                            logMessage($"Error installing SteamCMD: {ex.Message}", LogType.Error);
+                        }
+                    } else
+                    {
+                        return;
+                    }
+                }
+                folderName += "\\steamcmd.exe";
+                txtSteamCmdPath.Text = folderName;
+                Properties.Settings.Default.SteamCMDPath = folderName;
+                Properties.Settings.Default.Save();
+            }
+        }
+
+        private void cmbServerType_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!this.IsLoaded) return;
+            if (cmbServerType.SelectedItem.ToString() == "SteamCMD" && !File.Exists(txtSteamCmdPath.Text+"\\steamcmd.exe"))
+            {
+                var mmb = new ModernMessageBox(this);
+                mmb.Show("You must install SteamCMD before you can update any servers via SteamCMD.", "SteamCMD Not Installed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            Properties.Settings.Default.ServerInstallType = cmbServerType.SelectedIndex;
+            Properties.Settings.Default.Save();
+        }
+
+        private void menuLog_Opened(object sender, RoutedEventArgs e)
+        {
+            if (txtLog.Selection.IsEmpty)
+            {
+                menuLogCopy.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                menuLogCopy.Visibility = Visibility.Visible;
+            }
+        }
+
+        private void menuLogSelectAll_Click(object sender, RoutedEventArgs e)
+        {
+            txtLog.SelectAll();
+        }
+
+        private void menuLogCopy_Click(object sender, RoutedEventArgs e)
+        {
+            txtLog.SelectAll();
+        }
+
+        private void menuLogClear_Click(object sender, RoutedEventArgs e)
+        {
+            txtLog.Document.Blocks.Clear();
         }
     }
     public enum LogType

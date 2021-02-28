@@ -24,6 +24,12 @@ namespace ValheimServerWarden
             Starting,
             Stopping
         }
+        public enum ServerInstallMethod
+        {
+            Manual,
+            Steam,
+            SteamCMD
+        }
         struct ServerData
         {
             internal string name;
@@ -70,7 +76,7 @@ namespace ValheimServerWarden
             }
         }
         public event EventHandler<ServerLogMessageEventArgs> LogMessage;
-        private string defaultSaveDir = $@"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}\AppData\LocalLow\IronGate\Valheim";
+        public static readonly string DefaultSaveDir = $@"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}\AppData\LocalLow\IronGate\Valheim";
         private string serverExe = "valheim_server.exe";
         private bool testMode = false;
         private ServerData data;
@@ -231,6 +237,8 @@ namespace ValheimServerWarden
                 this._discordWebhookMesssages = value;
             }
         }
+        public string InstallPath { get; set; }
+        public ServerInstallMethod InstallMethod { get; set; }
         [JsonIgnore]
         public bool Running
         {
@@ -285,7 +293,7 @@ namespace ValheimServerWarden
                 return _discordWebhookDefaultMessages;
             }
         }
-        public ValheimServer(string name, int port, string world, string password, bool pubserver, bool autostart, bool log, int restarthours, string discordwebhook, Dictionary<string,string> discordmessages)
+        public ValheimServer(string name, int port, string world, string password, bool pubserver, bool autostart, bool log, int restarthours, string discordwebhook, Dictionary<string,string> discordmessages, ServerInstallMethod install, string instpath)
         {
             this.data.name = name;
             this.data.port = 2456;
@@ -298,6 +306,8 @@ namespace ValheimServerWarden
             this.data.restartHours = restarthours;
             this.data.discordWebhook = discordwebhook;
             this._discordWebhookMesssages = discordmessages;
+            InstallMethod = install;
+            InstallPath = instpath;
 
             this.process = new Process();
             this.process.StartInfo.EnvironmentVariables["SteamAppId"] = "892970";
@@ -335,11 +345,11 @@ namespace ValheimServerWarden
             }
         }
 
-        public ValheimServer() : this("My Server", 2456, "Dedicated", "Secret", false, false, false, 0, null, new Dictionary<string,string>())
+        public ValheimServer() : this("My Server", 2456, "Dedicated", "Secret", false, false, false, 0, null, new Dictionary<string,string>(), ServerInstallMethod.Manual, Properties.Settings.Default.ServerFilePath)
         {
         }
 
-        public ValheimServer(string name) : this(name, 2456, "Dedicated", "Secret", false, false, false, 0, null, new Dictionary<string,string>())
+        public ValheimServer(string name) : this(name, 2456, "Dedicated", "Secret", false, false, false, 0, null, new Dictionary<string,string>(), ServerInstallMethod.Manual, Properties.Settings.Default.ServerFilePath)
         {
 
         }
@@ -563,12 +573,12 @@ namespace ValheimServerWarden
             string saveDir = this.SaveDir;
             if (saveDir == null || saveDir.Length == 0)
             {
-                saveDir = defaultSaveDir;
+                saveDir = DefaultSaveDir;
             }
-            string serverpath = Properties.Settings.Default.ServerFilePath;
+            string serverpath = InstallPath;//Properties.Settings.Default.ServerFilePath;
             if (!File.Exists(serverpath))
             {
-                logMessage($"Server {this.Name} cannot start because the server executable does not exist at ({Properties.Settings.Default.ServerFilePath}) does not contain {this.serverExe}. Please update the server executable path in the app settings.", LogType.Error);
+                logMessage($"Server {this.Name} cannot start because the server executable path ({Properties.Settings.Default.ServerFilePath}) does not contain {this.serverExe}. Please update the server executable path.", LogType.Error);
                 return;
             }
             string arguments = $"-nographics -batchmode -name \"{this.Name}\" -port {this.Port} -world \"{this.World}\"";
@@ -576,7 +586,7 @@ namespace ValheimServerWarden
             {
                 arguments += $" -password \"{this.Password}\"";
             }
-            if (!saveDir.Equals(defaultSaveDir))
+            if (!saveDir.Equals(DefaultSaveDir))
             {
                 arguments += $" -savedir \"{this.SaveDir}\"";
             }
