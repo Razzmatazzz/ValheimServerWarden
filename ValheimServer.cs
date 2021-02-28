@@ -12,6 +12,7 @@ using System.ServiceProcess;
 using System.Runtime.InteropServices;
 using System.IO;
 using System.Globalization;
+using RazzLogging;
 
 namespace ValheimServerWarden
 {
@@ -49,10 +50,14 @@ namespace ValheimServerWarden
         public event EventHandler<PlayerEventArgs> PlayerDisconnected;
         public event EventHandler<PlayerEventArgs> PlayerDied;
         public event EventHandler<RandomServerEventArgs> RandomServerEvent;
-        public event EventHandler<ServerEventArgs> Starting;
-        public event EventHandler<ServerEventArgs> Started;
-        public event EventHandler<ServerEventArgs> StartFailed;
+        public event EventHandler<EventArgs> Starting;
+        public event EventHandler<EventArgs> Started;
+        public event EventHandler<ServerErrorEventArgs> StartFailed;
+        public event EventHandler<ServerErrorEventArgs> StopFailed;
+        public event EventHandler<EventArgs> ScheduledRestart;
         public event EventHandler<ServerExitedEventArgs> Exited;
+        public event EventHandler<ServerExitedEventArgs> ExitedUnexpectedly;
+        public event EventHandler<ServerErrorEventArgs> ErrorOccurred;
         public event DataReceivedEventHandler OutputDataReceived
         {
             add
@@ -75,7 +80,7 @@ namespace ValheimServerWarden
                 this.process.ErrorDataReceived -= value;
             }
         }
-        public event EventHandler<ServerLogMessageEventArgs> LogMessage;
+        public event EventHandler<LoggedMessageEventArgs> LoggedMessage;
         public static readonly string DefaultSaveDir = $@"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}\AppData\LocalLow\IronGate\Valheim";
         private string serverExe = "valheim_server.exe";
         private bool testMode = false;
@@ -91,6 +96,7 @@ namespace ValheimServerWarden
         private bool needsRestart;
         private bool scheduledRestart;
         private System.Timers.Timer restartTimer;
+        private List<LogEntry> logEntries;
         private bool inTxn = false;
 
         private static Dictionary<string, string> _discordWebhookDefaultMessages = new Dictionary<string, string> {
@@ -293,6 +299,14 @@ namespace ValheimServerWarden
                 return _discordWebhookDefaultMessages;
             }
         }
+        [JsonIgnore]
+        public List<LogEntry> LogEntries
+        {
+            get
+            {
+                return logEntries;
+            }
+        }
         public ValheimServer(string name, int port, string world, string password, bool pubserver, bool autostart, bool log, int restarthours, string discordwebhook, Dictionary<string,string> discordmessages, ServerInstallMethod install, string instpath)
         {
             this.data.name = name;
@@ -328,6 +342,7 @@ namespace ValheimServerWarden
             this.status = ServerStatus.Stopped;
             this.scheduledRestart = false;
             this.needsRestart = false;
+            this.logEntries = new List<LogEntry>();
 
             connectingSteamIds = new List<string>();
         }
@@ -337,7 +352,7 @@ namespace ValheimServerWarden
             if (this.PlayerCount == 0)
             {
                 scheduledRestart = true;
-                logMessage($"Initiating scheduled restart for {this.Name}", LogType.Normal);
+                OnScheduledRestart(new EventArgs());
                 this.Stop();
             } else
             {
@@ -449,7 +464,7 @@ namespace ValheimServerWarden
                 {
                     connectingSteamIds.Remove(match.Groups[1].ToString());
                 }
-                OnFailedPassword(new FailedPasswordEventArgs(this, match.Groups[1].ToString()));
+                OnFailedPassword(new FailedPasswordEventArgs(match.Groups[1].ToString()));
                 return;
             }
 
@@ -475,7 +490,7 @@ namespace ValheimServerWarden
                         if (player.Name.Equals(match.Groups[1].ToString()))
                         {
                             player.Deaths++;
-                            OnPlayerDied(new PlayerEventArgs(this, player));
+                            OnPlayerDied(new PlayerEventArgs(player));
                             break;
                         }
                     }
@@ -487,7 +502,7 @@ namespace ValheimServerWarden
                     Player player = new Player(match.Groups[1].ToString(), steamid);
                     this.players.Add(player);
                     connectingSteamIds.Remove(steamid);
-                    OnPlayerConnected(new PlayerEventArgs(this, player));
+                    OnPlayerConnected(new PlayerEventArgs(player));
                 }
                 return;
             }
@@ -504,11 +519,11 @@ namespace ValheimServerWarden
                     if (steamid.Equals(player.SteamID))
                     {
                         this.players.Remove(player);
-                        OnPlayerDisconnected(new PlayerEventArgs(this, player));
+                        OnPlayerDisconnected(new PlayerEventArgs(player));
                         if (this.needsRestart && this.PlayerCount == 0)
                         {
                             scheduledRestart = true;
-                            logMessage($"Initiating scheduled restart for {this.Name}", LogType.Normal);
+                            OnScheduledRestart(new EventArgs());
                             this.Stop();
                         }
                         break;
@@ -534,7 +549,7 @@ namespace ValheimServerWarden
                 if (match.Success)
                 {
                     this.status = ServerStatus.Running;
-                    OnStarted(new ServerEventArgs(this));
+                    OnStarted(new EventArgs());
                     //logMessage($"Server {this.Name}: started", LogType.Success);
                 }
                 return;
@@ -557,7 +572,7 @@ namespace ValheimServerWarden
             match = rx.Match(msg);
             if (match.Success)
             {
-                OnRandomServerEvent(new RandomServerEventArgs(this, match.Groups[1].ToString()));
+                OnRandomServerEvent(new RandomServerEventArgs(match.Groups[1].ToString()));
                 return;
                 //army_moder
             }
@@ -567,7 +582,9 @@ namespace ValheimServerWarden
         {
             if (this.Running)
             {
-                logMessage($"Server {this.Name} cannot start since it is already running.", LogType.Error);
+                //logMessage($"Server {this.Name} cannot start since it is already running.", LogType.Error);
+                //addToLog("Server cannot start; it is already running.", LogEntryType.Error);
+                OnStartFailed(new ServerErrorEventArgs("Server cannot start; it is already running."));
                 return;
             }
             string saveDir = this.SaveDir;
@@ -578,7 +595,7 @@ namespace ValheimServerWarden
             string serverpath = InstallPath;//Properties.Settings.Default.ServerFilePath;
             if (!File.Exists(serverpath))
             {
-                logMessage($"Server {this.Name} cannot start because the server executable path ({Properties.Settings.Default.ServerFilePath}) does not contain {this.serverExe}. Please update the server executable path.", LogType.Error);
+                OnStartFailed(new ServerErrorEventArgs($"Server cannot start because {this.serverExe} was not found at the server executable path ({serverpath}). Please update the server executable path."));
                 return;
             }
             string arguments = $"-nographics -batchmode -name \"{this.Name}\" -port {this.Port} -world \"{this.World}\"";
@@ -618,7 +635,7 @@ namespace ValheimServerWarden
                     restartTimer.Enabled = false;
                 }
                 this.status = ServerStatus.Starting;
-                OnStarting(new ServerEventArgs(this));
+                OnStarting(new EventArgs());
                 this.process.StartInfo.FileName = serverpath;
                 this.process.StartInfo.Arguments = arguments;
                 Thread.CurrentThread.IsBackground = true;
@@ -637,7 +654,7 @@ namespace ValheimServerWarden
             if (!this.Running)
             {
                 //throw new Exception("This server is not running.");
-                logMessage($"Server {this.Name} cannot stop since it is not running.", LogType.Error);
+                OnStopFailed(new ServerErrorEventArgs($"Server cannot stop since it is not running."));
                 return;
             }
             new Thread(() =>
@@ -683,17 +700,17 @@ namespace ValheimServerWarden
             this.players.Clear();
             if (failedstart)
             {
-                OnStartFailed(new ServerEventArgs(this));
+                OnStartFailed(new ServerErrorEventArgs($"Server failed to start."));
             }
             else
             {
-                OnServerExited(new ServerExitedEventArgs(this, this.process.ExitCode, this.intentionalExit));
+                OnServerExited(new ServerExitedEventArgs(this.process.ExitCode, this.intentionalExit));
                 if (scheduledRestart)
                 {
                     this.Start();
                 } else if (unwantedexit)
                 {
-                    logMessage($"Server {this.Name} stopped unexpectedly.", LogType.Error);
+                    OnServerExitedUnexpectedly(new ServerExitedEventArgs(this.process.ExitCode, this.intentionalExit));
                     if (this.Autostart)
                     {
                         this.Start();
@@ -701,11 +718,6 @@ namespace ValheimServerWarden
                 }
             }
         }
-        private void logMessage(string message, LogType logtype)
-        {
-            OnLogMessage(new ServerLogMessageEventArgs(this, message, logtype));
-        }
-
         void IEditableObject.BeginEdit()
         {
             if (!inTxn)
@@ -807,8 +819,9 @@ namespace ValheimServerWarden
             }
             catch (Exception ex)
             {
-                logMessage($"Error sending Webhook for failed password attempt: {ex.Message}", LogType.Error);
+                OnErrorOccurred(new ServerErrorEventArgs($"Error sending Webhook for failed password attempt: {ex.Message}", ex));
             }
+            addToLog($"Failed password attempt for steamid {args.SteamID}.");
             EventHandler<FailedPasswordEventArgs> handler = FailedPassword;
             if (null != handler) handler(this, args);
         }
@@ -820,8 +833,9 @@ namespace ValheimServerWarden
             }
             catch (Exception ex)
             {
-                logMessage($"Error sending Webhook for player connected: {ex.Message}", LogType.Error);
+                OnErrorOccurred(new ServerErrorEventArgs($"Error sending Webhook for player connected: {ex.Message}", ex));
             }
+            addToLog($"Player {args.Player.Name} ({args.Player.SteamID}) connected");
             EventHandler<PlayerEventArgs> handler = PlayerConnected;
             if (null != handler) handler(this, args);
         }
@@ -833,8 +847,9 @@ namespace ValheimServerWarden
             }
             catch (Exception ex)
             {
-                logMessage($"Error sending Webhook for player disconnected: {ex.Message}", LogType.Error);
+                OnErrorOccurred(new ServerErrorEventArgs($"Error sending Webhook for player disconnected: {ex.Message}", ex));
             }
+            addToLog($"Player {args.Player.Name} ({args.Player.SteamID}) disconnected");
             EventHandler<PlayerEventArgs> handler = PlayerDisconnected;
             if (null != handler) handler(this, args);
         }
@@ -846,8 +861,9 @@ namespace ValheimServerWarden
             }
             catch (Exception ex)
             {
-                logMessage($"Error sending Webhook for player death: {ex.Message}", LogType.Error);
+                OnErrorOccurred(new ServerErrorEventArgs($"Error sending Webhook for player death: {ex.Message}", ex));
             }
+            addToLog($"Player {args.Player.Name} ({args.Player.SteamID}) died");
             EventHandler<PlayerEventArgs> handler = PlayerDied;
             if (null != handler) handler(this, args);
         }
@@ -859,9 +875,23 @@ namespace ValheimServerWarden
             }
             catch (Exception ex)
             {
-                logMessage($"Error sending Webhook for server stop: {ex.Message}", LogType.Error);
+                OnErrorOccurred(new ServerErrorEventArgs($"Error sending Webhook for server stop: {ex.Message}", ex));
+            }
+            if (args.ExitCode == 0 || args.ExitCode == -1073741510)
+            {
+                addToLog($"Server stopped.");
+            }
+            else
+            {
+                addToLog($"Server exited with code {args.ExitCode}.", LogEntryType.Error);
             }
             EventHandler<ServerExitedEventArgs> handler = Exited;
+            if (null != handler) handler(this, args);
+        }
+        private void OnServerExitedUnexpectedly(ServerExitedEventArgs args)
+        {
+            addToLog($"Server stopped unexpectedly.", LogEntryType.Error);
+            EventHandler<ServerExitedEventArgs> handler = ExitedUnexpectedly;
             if (null != handler) handler(this, args);
         }
         private void OnRandomServerEvent(RandomServerEventArgs args)
@@ -872,22 +902,24 @@ namespace ValheimServerWarden
             }
             catch (Exception ex)
             {
-                logMessage($"Error sending Webhook for random server event: {ex.Message}", LogType.Error);
+                OnErrorOccurred(new ServerErrorEventArgs($"Error sending Webhook for random server eventt: {ex.Message}", ex));
             }
+            addToLog($"Random event {args.EventName}.");
             EventHandler<RandomServerEventArgs> handler = RandomServerEvent;
             if (null != handler) handler(this, args);
         }
-        private void OnLogMessage(ServerLogMessageEventArgs args)
+        private void OnLoggedMessage(LoggedMessageEventArgs args)
         {
-            EventHandler<ServerLogMessageEventArgs> handler = LogMessage;
+            EventHandler<LoggedMessageEventArgs> handler = LoggedMessage;
             if (null != handler) handler(this, args);
         }
-        private void OnStarting(ServerEventArgs args)
+        private void OnStarting(EventArgs args)
         {
-            EventHandler<ServerEventArgs> handler = Starting;
+            addToLog("Server starting...");
+            EventHandler<EventArgs> handler = Starting;
             if (null != handler) handler(this, args);
         }
-        private void OnStarted(ServerEventArgs args)
+        private void OnStarted(EventArgs args)
         {
             try
             {
@@ -895,14 +927,34 @@ namespace ValheimServerWarden
             }
             catch (Exception ex)
             {
-                logMessage($"Error sending Webhook for server start: {ex.Message}", LogType.Error);
+                OnErrorOccurred(new ServerErrorEventArgs($"Error sending Webhook for server start: {ex.Message}", ex));
             }
-            EventHandler<ServerEventArgs> handler = Started;
+            addToLog($"Server started.", LogEntryType.Success);
+            EventHandler<EventArgs> handler = Started;
             if (null != handler) handler(this, args);
         }
-        private void OnStartFailed(ServerEventArgs args)
+        private void OnStartFailed(ServerErrorEventArgs args)
         {
-            EventHandler<ServerEventArgs> handler = StartFailed;
+            addToLog(args.Message, LogEntryType.Error);
+            EventHandler<ServerErrorEventArgs> handler = StartFailed;
+            if (null != handler) handler(this, args);
+        }
+        private void OnStopFailed(ServerErrorEventArgs args)
+        {
+            addToLog(args.Message, LogEntryType.Error);
+            EventHandler<ServerErrorEventArgs> handler = StopFailed;
+            if (null != handler) handler(this, args);
+        }
+        private void OnScheduledRestart(EventArgs args)
+        {
+            addToLog($"Initiating scheduled restart...");
+            EventHandler<EventArgs> handler = ScheduledRestart;
+            if (null != handler) handler(this, args);
+        }
+        private void OnErrorOccurred(ServerErrorEventArgs args)
+        {
+            addToLog(args.Message, LogEntryType.Error);
+            EventHandler<ServerErrorEventArgs> handler = ErrorOccurred;
             if (null != handler) handler(this, args);
         }
         /*private void OutputReceived(DataReceivedEventArgs args)
@@ -915,7 +967,16 @@ namespace ValheimServerWarden
             EventHandler<DataReceivedEventArgs> handler = ErrorDataReceived;
             if (null != handler) handler(this, args);
         }*/
-
+        private void addToLog(string message, LogEntryType t)
+        {
+            var entry = new LogEntry(message, t);
+            LogEntries.Add(entry);
+            OnLoggedMessage(new LoggedMessageEventArgs(entry));
+        }
+        private void addToLog(string message)
+        {
+            addToLog(message, LogEntryType.Normal);
+        }
         public static void TerminateAll(Process[] servers)
         {
             new Thread(() =>
@@ -950,26 +1011,11 @@ namespace ValheimServerWarden
         }
     }
 
-    public class ServerEventArgs : EventArgs
-    {
-        private readonly ValheimServer _server;
-
-        public ServerEventArgs(ValheimServer server)
-        {
-            _server = server;
-        }
-
-        public ValheimServer Server
-        {
-            get { return _server; }
-        }
-    }
-
-    public class FailedPasswordEventArgs : ServerEventArgs
+    public class FailedPasswordEventArgs : EventArgs
     {
         private readonly string _steamid;
 
-        public FailedPasswordEventArgs(ValheimServer server, string steamid) : base(server)
+        public FailedPasswordEventArgs(string steamid)
         {
             _steamid = steamid;
         }
@@ -978,11 +1024,11 @@ namespace ValheimServerWarden
             get { return _steamid; }
         }
     }
-    public class PlayerEventArgs : ServerEventArgs
+    public class PlayerEventArgs : EventArgs
     {
         private readonly Player _player;
 
-        public PlayerEventArgs(ValheimServer server, Player player) : base(server)
+        public PlayerEventArgs(Player player)
         {
             _player = player;
         }
@@ -991,12 +1037,12 @@ namespace ValheimServerWarden
             get { return _player; }
         }
     }
-    public class ServerExitedEventArgs : ServerEventArgs
+    public class ServerExitedEventArgs
     {
         private readonly int _exitcode;
         private readonly bool _intentionalexit;
 
-        public ServerExitedEventArgs(ValheimServer server, int exitcode, bool intentionalexit) : base(server)
+        public ServerExitedEventArgs(int exitcode, bool intentionalexit)
         {
             _exitcode = exitcode;
             _intentionalexit = intentionalexit;
@@ -1010,11 +1056,11 @@ namespace ValheimServerWarden
             get { return _intentionalexit; }
         }
     }
-    public class RandomServerEventArgs : ServerEventArgs
+    public class RandomServerEventArgs
     {
         private readonly string _eventname;
 
-        public RandomServerEventArgs(ValheimServer server, string eventname) : base(server)
+        public RandomServerEventArgs(string eventname)
         {
             _eventname = eventname;
         }
@@ -1023,18 +1069,35 @@ namespace ValheimServerWarden
             get { return _eventname; }
         }
     }
-    public class ServerLogMessageEventArgs : LogMessageEventArgs
+    public class ServerErrorEventArgs : EventArgs
     {
-        private readonly ValheimServer _server;
-        public ServerLogMessageEventArgs(ValheimServer server, string message, LogType logtype) : base(message, logtype)
+        private readonly Exception _exception;
+        private readonly string _message;
+        public ServerErrorEventArgs(Exception ex)
         {
-            _server = server;
+            _exception = ex;
+            _message = ex.Message;
         }
-        public ServerLogMessageEventArgs(ValheimServer server, string message) : this(server, message, LogType.Normal) { }
-
-        public ValheimServer Server
+        public ServerErrorEventArgs(string message)
         {
-            get { return _server; }
+            _exception = new Exception(message);
+            _message = message;
+        }
+        public ServerErrorEventArgs(string message, Exception ex)
+        {
+            _exception = ex;
+            _message = message;
+        }
+        public string Message
+        {
+            get { return _message; }
+        }
+        public Exception Exception
+        {
+            get
+            {
+                return _exception;
+            }
         }
     }
 }

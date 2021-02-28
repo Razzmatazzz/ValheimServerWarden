@@ -17,6 +17,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using RazzLogging;
 using RazzTools;
 
 namespace ValheimServerWarden
@@ -50,14 +51,6 @@ namespace ValheimServerWarden
                 cmbServerType.Items.Add(Enum.GetName(typeof(ValheimServer.ServerInstallMethod), i));
             }
             RefreshControls();
-            this.Server.LogMessage += ((object sender, ServerLogMessageEventArgs e) =>
-            {
-                this.Dispatcher.Invoke(() =>
-                {
-                    //logMessage($"Server {e.Server.Name}: {e.Message}", e.LogType);
-                    LogMessage(e.Message, e.LogType);
-                });
-            });
             attachServerEventHandlers();
             ServerToControls();
             _steamPath = null;
@@ -83,6 +76,18 @@ namespace ValheimServerWarden
             }
             GetExternalIP();
             LoadLists();
+
+            foreach (var entry in Server.LogEntries)
+            {
+                if (txtServerLog.Document.Blocks.Count > 0)
+                {
+                    txtServerLog.Document.Blocks.InsertBefore(txtServerLog.Document.Blocks.FirstBlock, (Paragraph)entry);
+                }
+                else
+                {
+                    txtServerLog.Document.Blocks.Add((Paragraph)entry);
+                }
+            }
         }
 
         public void RefreshControls()
@@ -147,88 +152,49 @@ namespace ValheimServerWarden
                 }
                 catch (Exception ex)
                 {
-                    LogMessage($"Error refreshing controls: {ex.Message}", LogType.Error);
+                    LogMessage($"Error refreshing controls: {ex.Message}", LogEntryType.Error);
                 }
             });
         }
         private void attachServerEventHandlers()
         {
+            Server.LoggedMessage += ((object sender, LoggedMessageEventArgs e) => {
+                this.Dispatcher.Invoke(() =>
+                {
+                    LogMessage(e.LogEntry);
+                });
+            });
             Server.Exited += ((object sender, ServerExitedEventArgs e) =>
             {
                 RefreshControls();
             });
             Server.PlayerConnected += ((object sender, PlayerEventArgs e) =>
             {
-                this.Dispatcher.Invoke(() =>
-                {
-                    LogMessage($"Player {e.Player.Name} ({e.Player.SteamID}) connected");
-                });
                 RefreshControls();
             });
             Server.PlayerDisconnected += ((object sender, PlayerEventArgs e) =>
             {
-                this.Dispatcher.Invoke(() =>
-                {
-                    LogMessage($"Player {e.Player.Name} ({e.Player.SteamID}) disconnected");
-                });
                 RefreshControls();
             });
             Server.PlayerDied += ((object sender, PlayerEventArgs e) =>
             {
-                this.Dispatcher.Invoke(() =>
-                {
-                    LogMessage($"Player {e.Player.Name} ({e.Player.SteamID}) died");
-                });
                 RefreshControls();
             });
             Server.FailedPassword += ((object sender, FailedPasswordEventArgs e) =>
             {
-                this.Dispatcher.Invoke(() =>
-                {
-                    LogMessage($"Failed password attempt for steamid {e.SteamID}.");
-                });
                 RefreshControls();
             });
-            Server.Starting += ((object sender, ServerEventArgs e) =>
+            Server.Starting += ((object sender, EventArgs e) =>
             {
                 RefreshControls();
             });
-            Server.Started += ((object sender, ServerEventArgs e) =>
+            Server.Started += ((object sender, EventArgs e) =>
             {
-                this.Dispatcher.Invoke(() =>
-                {
-                    LogMessage($"Server started.", LogType.Success);
-                });
                 RefreshControls();
             });
-            Server.StartFailed += ((object sender, ServerEventArgs e) =>
+            Server.StartFailed += ((object sender, ServerErrorEventArgs e) =>
             {
-                this.Dispatcher.Invoke(() =>
-                {
-                    LogMessage($"Server failed to start.", LogType.Error);
-                });
                 RefreshControls();
-            });
-            Server.Exited += ((object sender, ServerExitedEventArgs e) =>
-            {
-                this.Dispatcher.Invoke(() =>
-                {
-                    if (e.ExitCode == 0 || e.ExitCode == -1073741510)
-                    {
-                        LogMessage($"Server stopped.");
-                    }
-                    else
-                    {
-                        LogMessage($"Server exited with code {e.ExitCode}.", LogType.Error);
-                    }
-                });
-            });
-            Server.RandomServerEvent += ((object sender, RandomServerEventArgs e) =>
-            {
-                this.Dispatcher.Invoke(() =>
-                {
-                    LogMessage($"Random event {e.EventName}.");
-                });
             });
             Server.Updated += ((object sender, UpdatedEventArgs e) =>
             {
@@ -266,7 +232,7 @@ namespace ValheimServerWarden
             }
             catch (Exception ex)
             {
-                LogMessage($"Error reading server settings: {ex.Message}", LogType.Error);
+                LogMessage($"Error reading server settings: {ex.Message}", LogEntryType.Error);
             }
         }
 
@@ -384,7 +350,10 @@ namespace ValheimServerWarden
             {
                 txtWorld.Text = Server.World;
             }
-            if (txtPassword.Text.Length >= 5)
+            if (txtPassword.Text.Length == 0) {
+                LogMessage("Warning: Servers must have passwords unless modded to remove that requirement.");
+            }
+            else if (txtPassword.Text.Length >= 5)
             {
                 if (!Server.World.Contains(txtPassword.Text))
                 {
@@ -393,14 +362,14 @@ namespace ValheimServerWarden
                 else
                 {
                     var mmb = new ModernMessageBox(this);
-                    mmb.Show("Passwords are required, must be at least 5 characters, and cannot be contained in your world name.", "Invalid Password", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    mmb.Show("Passwords must be at least 5 characters, and cannot be contained in your world name.", "Invalid Password", MessageBoxButton.OK, MessageBoxImage.Warning);
                     txtPassword.Text = Server.Password;
                 }
             }
             else
             {
                 var mmb = new ModernMessageBox(this);
-                mmb.Show("Passwords are required, must be at least 5 characters, and cannot be contained in your world name.", "Invalid Password", MessageBoxButton.OK, MessageBoxImage.Warning);
+                mmb.Show("Passwords must be at least 5 characters, and cannot be contained in your world name.", "Invalid Password", MessageBoxButton.OK, MessageBoxImage.Warning);
                 txtPassword.Text = Server.Password;
             }
             Server.Password = txtPassword.Text;
@@ -555,41 +524,25 @@ namespace ValheimServerWarden
                 mmb.Show("Please stop the server before updating.", "Stop Server to Update", MessageBoxButton.OK, MessageBoxImage.Warning, MessageBoxResult.OK);
             }
         }
-
-        public void LogMessage(string msg, LogType lt)
-        {
-            Color color = ((SolidColorBrush)this.Foreground).Color;
-            if (lt == LogType.Success)
-            {
-                color = Color.FromRgb(50, 200, 50);
-            }
-            else if (lt == LogType.Error)
-            {
-                color = Color.FromRgb(200, 50, 50);
-            }
-            LogMessage(msg, color);
-        }
-
         public void LogMessage(string msg)
         {
-            LogMessage(msg, LogType.Normal);
+            LogMessage(msg, LogEntryType.Normal);
         }
-
-        public void LogMessage(string msg, Color color)
+        public void LogMessage(string msg, LogEntryType lt)
+        {
+            LogMessage(new LogEntry(msg, lt));
+        }
+        public void LogMessage(LogEntry entry)
         {
             try
             {
-                Run run = new Run(DateTime.Now.ToString() + ": " + msg);
-                run.Foreground = new SolidColorBrush(color);
-                Paragraph paragraph = new Paragraph(run);
-                paragraph.Margin = new Thickness(0);
                 if (txtServerLog.Document.Blocks.Count > 0)
                 {
-                    txtServerLog.Document.Blocks.InsertBefore(txtServerLog.Document.Blocks.FirstBlock, paragraph);
+                    txtServerLog.Document.Blocks.InsertBefore(txtServerLog.Document.Blocks.FirstBlock, (Paragraph)entry);
                 }
                 else
                 {
-                    txtServerLog.Document.Blocks.Add(paragraph);
+                    txtServerLog.Document.Blocks.Add((Paragraph)entry);
                 }
             }
             catch (Exception ex)
@@ -642,7 +595,7 @@ namespace ValheimServerWarden
                         }
                         catch (Exception ex)
                         {
-                            LogMessage($"Error installing dedicated server: {ex.Message}", LogType.Error);
+                            LogMessage($"Error installing dedicated server: {ex.Message}", LogEntryType.Error);
                         }
                     }
                 }
@@ -674,6 +627,7 @@ namespace ValheimServerWarden
         private void menuLogClear_Click(object sender, RoutedEventArgs e)
         {
             txtServerLog.Document.Blocks.Clear();
+            Server.LogEntries.Clear();
         }
 
         private void menuLogSelectAll_Click(object sender, RoutedEventArgs e)
@@ -712,11 +666,11 @@ namespace ValheimServerWarden
                     savedir = ValheimServer.DefaultSaveDir;
                 }
                 File.WriteAllTextAsync(savedir + "\\adminlist.txt", txtAdminList.Text);
-                LogMessage("Admin list updated.", LogType.Success);
+                LogMessage("Admin list updated.", LogEntryType.Success);
             }
             catch (Exception ex)
             {
-                LogMessage($"Error updating admin list: {ex.Message}", LogType.Error);
+                LogMessage($"Error updating admin list: {ex.Message}", LogEntryType.Error);
             }
         }
 
@@ -734,11 +688,11 @@ namespace ValheimServerWarden
                     savedir = ValheimServer.DefaultSaveDir;
                 }
                 File.WriteAllTextAsync(savedir + "\\bannedlist.txt", txtBannedList.Text);
-                LogMessage("Banned list updated.", LogType.Success);
+                LogMessage("Banned list updated.", LogEntryType.Success);
             }
             catch (Exception ex)
             {
-                LogMessage($"Error updating banned list: {ex.Message}", LogType.Error);
+                LogMessage($"Error updating banned list: {ex.Message}", LogEntryType.Error);
             }
         }
 
@@ -756,12 +710,42 @@ namespace ValheimServerWarden
                     savedir = ValheimServer.DefaultSaveDir;
                 }
                 File.WriteAllTextAsync(savedir + "\\permittedlist.txt", txtPermittedList.Text);
-                LogMessage("Permitted list updated.", LogType.Success);
+                LogMessage("Permitted list updated.", LogEntryType.Success);
             }
             catch (Exception ex)
             {
-                LogMessage($"Error updating permitted list: {ex.Message}", LogType.Error);
+                LogMessage($"Error updating permitted list: {ex.Message}", LogEntryType.Error);
             }
+        }
+        public void ThemeUpdated()
+        {
+            txtServerLog.Document.Blocks.Clear();
+            foreach (var entry in Server.LogEntries)
+            {
+                if (txtServerLog.Document.Blocks.Count > 0)
+                {
+                    txtServerLog.Document.Blocks.InsertBefore(txtServerLog.Document.Blocks.FirstBlock, (Block)entry);
+                }
+                else
+                {
+                    txtServerLog.Document.Blocks.Add((Block)entry);
+                }
+            }
+        }
+    }
+
+    public class ServerEventArgs : EventArgs
+    {
+        private readonly ValheimServer _server;
+
+        public ServerEventArgs(ValheimServer server)
+        {
+            _server = server;
+        }
+
+        public ValheimServer Server
+        {
+            get { return _server; }
         }
     }
 }
