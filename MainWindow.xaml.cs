@@ -103,15 +103,22 @@ namespace ValheimServerWarden
             servers = new List<ValheimServer>();
             if (File.Exists(this.ServerJsonPath))
             {
-                ValheimServer[] savedServers = JsonSerializer.Deserialize<ValheimServer[]>(File.ReadAllText(this.ServerJsonPath));
-                foreach (ValheimServer s in savedServers)
+                try
                 {
-                    attachServerEventListeners(s);
-                    servers.Add(s);
-                    if (s.Autostart)
+                    ValheimServer[] savedServers = JsonSerializer.Deserialize<ValheimServer[]>(File.ReadAllText(this.ServerJsonPath));
+                    foreach (ValheimServer s in savedServers)
                     {
-                        StartServer(s);
+                        attachServerEventListeners(s);
+                        servers.Add(s);
+                        if (s.Autostart)
+                        {
+                            StartServer(s);
+                        }
                     }
+                }
+                catch (Exception ex)
+                {
+                    logMessage($"Error reading saved servers: {ex.Message}", LogEntryType.Error);
                 }
             }
             dgServers.ItemsSource = servers;
@@ -263,12 +270,15 @@ namespace ValheimServerWarden
         }
         private void btnServerPath_Click(object sender, RoutedEventArgs e)
         {
-            string filepath = txtServerPath.Text;
             System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-            openFileDialog.CheckFileExists = true;
-            if (File.Exists(filepath))
+            if (txtServerPath.Text.Length > 0)
             {
-                openFileDialog.InitialDirectory = (new FileInfo(filepath)).DirectoryName;
+                string filepath = txtServerPath.Text;
+                openFileDialog.CheckFileExists = true;
+                if (File.Exists(filepath))
+                {
+                    openFileDialog.InitialDirectory = (new FileInfo(filepath)).DirectoryName;
+                }
             }
             openFileDialog.Filter = "Server executable|valheim_server.exe";
             openFileDialog.Title = "Select where valheim_server.exe is installed";
@@ -1119,11 +1129,14 @@ namespace ValheimServerWarden
 
         private void btnSteamCmdPath_Click(object sender, RoutedEventArgs e)
         {
-            var filepath = new FileInfo(txtSteamCmdPath.Text).Directory.FullName;
             var openFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
-            if (Directory.Exists(filepath))
+            if (txtSteamCmdPath.Text.Length > 0)
             {
-                openFolderDialog.SelectedPath = filepath;
+                var filepath = new FileInfo(txtSteamCmdPath.Text).Directory.FullName;
+                if (Directory.Exists(filepath))
+                {
+                    openFolderDialog.SelectedPath = filepath;
+                }
             }
             openFolderDialog.UseDescriptionForTitle = true;
             openFolderDialog.Description = "Select SteamCMD installation folder";
