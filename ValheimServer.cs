@@ -98,6 +98,7 @@ namespace ValheimServerWarden
         private System.Timers.Timer restartTimer;
         private List<LogEntry> logEntries;
         private bool inTxn = false;
+        private int stopAttempts;
 
         private static Dictionary<string, string> _discordWebhookDefaultMessages = new Dictionary<string, string> {
             {"OnStarted", "Server {Server.Name} has started." },
@@ -266,7 +267,6 @@ namespace ValheimServerWarden
         {
             get
             {
-                //return this.playerCount;
                 return this.Players.Count;
             }
         }
@@ -307,6 +307,23 @@ namespace ValheimServerWarden
                 return logEntries;
             }
         }
+        [JsonIgnore]
+        public string DisplayName
+        {
+            get
+            {
+                try
+                {
+                    var htmlDoc = new HtmlAgilityPack.HtmlDocument();
+                    htmlDoc.LoadHtml(Name);
+                    return htmlDoc.DocumentNode.InnerText.Trim();
+                }
+                catch (Exception ex)
+                {
+                    return Name;
+                }
+            }
+        }
         public ValheimServer(string name, int port, string world, string password, bool pubserver, bool autostart, bool log, int restarthours, string discordwebhook, Dictionary<string,string> discordmessages, ServerInstallMethod install, string instpath)
         {
             this.data.name = name;
@@ -345,6 +362,7 @@ namespace ValheimServerWarden
             this.logEntries = new List<LogEntry>();
 
             connectingSteamIds = new List<string>();
+            stopAttempts = 0;
         }
 
         private void RestartTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
@@ -370,7 +388,7 @@ namespace ValheimServerWarden
         }
         public string GetLogName()
         {
-            string logname = this.Name.Replace(" ", "_");
+            string logname = this.DisplayName.Replace(" ", "_");
             logname = Regex.Replace(logname, @"[<]", "[");
             logname = Regex.Replace(logname, @"[>]", "]");
             foreach (var c in Path.GetInvalidFileNameChars()) { logname = logname.Replace(c, '-'); }
@@ -405,7 +423,7 @@ namespace ValheimServerWarden
         {
             string message = GetWebhookMessage(EventName);
             if (message == "") return;
-            message = message.Replace("{Server.Name}", this.Name);
+            message = message.Replace("{Server.Name}", this.DisplayName);
             message = message.Replace("{Server.PlayerCount}", this.PlayerCount.ToString());
             if (player != null)
             {
@@ -637,6 +655,7 @@ namespace ValheimServerWarden
                 {
                     restartTimer.Enabled = false;
                 }
+                stopAttempts = 0;
                 this.status = ServerStatus.Starting;
                 OnStarting(new EventArgs());
                 this.process.StartInfo.FileName = serverpath;
@@ -672,6 +691,19 @@ namespace ValheimServerWarden
                     SetConsoleCtrlHandler(null, false);
                     this.intentionalExit = true;
                     this.restartTimer.Enabled = false;
+                }
+                else
+                {
+                    if (stopAttempts < 5)
+                    {
+                        stopAttempts++;
+                        this.Stop();
+                    }
+                    else
+                    {
+                        OnStopFailed(new ServerErrorEventArgs($"Tried to attach console to stop server but failed 5 times; giving up."));
+                        stopAttempts = 0;
+                    }
                 }
             }).Start();
         }

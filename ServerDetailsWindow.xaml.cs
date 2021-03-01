@@ -96,7 +96,7 @@ namespace ValheimServerWarden
             {
                 try
                 {
-                    Title = $"{this.Server.Name} Details";
+                    Title = $"{this.Server.DisplayName} Details";
                     lblPlayerCount.Content = this.Server.PlayerCount;
                     dgPlayers.ItemsSource = this.Server.Players;
                     dgPlayers.Items.Refresh();
@@ -331,6 +331,7 @@ namespace ValheimServerWarden
             if (txtName.Text.Length > 0)
             {
                 Server.Name = txtName.Text;
+                Title = Server.DisplayName;
             } else
             {
                 txtName.Text = Server.Name;

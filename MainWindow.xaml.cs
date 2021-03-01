@@ -382,16 +382,19 @@ namespace ValheimServerWarden
             {
                 //server.OutputDataReceived += Server_OutputDataReceived;
                 //server.ErrorDataReceived += Server_OutputDataReceived;
+                server.LoggedMessage += ((object sender, LoggedMessageEventArgs e) => {
+                    this.Dispatcher.Invoke(() =>
+                    {
+                        var server = (ValheimServer)sender;
+                        logMessage(server.DisplayName+": "+e.LogEntry.Message, e.LogEntry.Type);
+                    });
+                });
                 server.Exited += Server_Exited;
                 server.Started += Server_Started;
                 server.StartFailed += Server_StartFailed;
-                server.FailedPassword += Server_FailedPassword;
+                server.StopFailed += Server_StopFailed;
                 server.PlayerConnected += Server_PlayerConnected;
                 server.PlayerDisconnected += Server_PlayerDisconnected;
-                server.PlayerDied += Server_PlayerDied;
-                server.RandomServerEvent += Server_RandomServerEvent;
-                server.ScheduledRestart += Server_ScheduledRestart;
-                server.ErrorOccurred += Server_ErrorOccurred;
             }
             catch (Exception ex)
             {
@@ -399,16 +402,20 @@ namespace ValheimServerWarden
             }
         }
 
-        private void Server_ErrorOccurred(object sender, ServerErrorEventArgs e)
+        private void Server_StopFailed(object sender, ServerErrorEventArgs e)
         {
-            var server = (ValheimServer)sender;
-            logMessage($"{server.Name} {e.Message}", LogEntryType.Error);
-        }
-
-        private void Server_ScheduledRestart(object sender, EventArgs e)
-        {
-            var server = (ValheimServer)sender;
-            logMessage($"Initiating scheduled restart for {server.Name}...");
+            try
+            {
+                var server = (ValheimServer)sender;
+                this.Dispatcher.Invoke(() =>
+                {
+                    RefreshDataGrid();
+                });
+            }
+            catch (Exception ex)
+            {
+                logMessage($"Error responding to server stop failed event: {ex.Message}", LogEntryType.Error);
+            }
         }
 
         private void Server_StartFailed(object sender, ServerErrorEventArgs e)
@@ -418,7 +425,6 @@ namespace ValheimServerWarden
                 var server = (ValheimServer)sender;
                 this.Dispatcher.Invoke(() =>
                 {
-                    logMessage($"{server.Name} {e.Message}", LogEntryType.Error);
                     RefreshDataGrid();
                 });
             }
@@ -435,7 +441,6 @@ namespace ValheimServerWarden
                 var server = (ValheimServer)sender;
                 this.Dispatcher.Invoke(() =>
                 {
-                    logMessage($"Server {server.Name} started.", LogEntryType.Success);
                     RefreshDataGrid();
                 });
             }
@@ -444,22 +449,6 @@ namespace ValheimServerWarden
                 logMessage($"Error responding to server started event: {ex.Message}", LogEntryType.Error);
             }
         }
-        private void Server_RandomServerEvent(object sender, RandomServerEventArgs e)
-        {
-            try
-            {
-                var server = (ValheimServer)sender;
-                this.Dispatcher.Invoke(() =>
-                {
-                    logMessage($"Server {server.Name}: random event {e.EventName}.");
-                });
-            }
-            catch (Exception ex)
-            {
-                logMessage($"Error responding to random server event: {ex.Message}", LogEntryType.Error);
-            }
-        }
-
         private void Server_PlayerDisconnected(object sender, PlayerEventArgs e)
         {
             try
@@ -467,7 +456,6 @@ namespace ValheimServerWarden
                 var server = (ValheimServer)sender;
                 this.Dispatcher.Invoke(() =>
                 {
-                    logMessage($"Server {server.Name}: player {e.Player.Name} ({e.Player.SteamID}) disconnected");
                     RefreshDataGrid();
                 });
             }
@@ -484,46 +472,12 @@ namespace ValheimServerWarden
                 var server = (ValheimServer)sender;
                 this.Dispatcher.Invoke(() =>
                 {
-                    logMessage($"Server {server.Name}: player {e.Player.Name} ({e.Player.SteamID}) connected");
                     RefreshDataGrid();
                 });
             }
             catch (Exception ex)
             {
                 logMessage($"Error responding to PlayerConnected event: {ex.Message}", LogEntryType.Error);
-            }
-        }
-
-        private void Server_PlayerDied(object sender, PlayerEventArgs e)
-        {
-            try
-            {
-                var server = (ValheimServer)sender;
-                this.Dispatcher.Invoke(() =>
-                {
-                    logMessage($"Server {server.Name}: player {e.Player.Name} ({e.Player.SteamID}) died");
-                    RefreshDataGrid();
-                });
-            }
-            catch (Exception ex)
-            {
-                logMessage($"Error responding to PlayerDied event: {ex.Message}", LogEntryType.Error);
-            }
-        }
-
-        private void Server_FailedPassword(object sender, FailedPasswordEventArgs e)
-        {
-            try
-            {
-                var server = (ValheimServer)sender;
-                this.Dispatcher.Invoke(() =>
-                {
-                    logMessage($"Server {server.Name}: failed password attempt for steamid {e.SteamID}.");
-                });
-            }
-            catch (Exception ex)
-            {
-                logMessage($"Error responding to FailedPassword event: {ex.Message}", LogEntryType.Error);
             }
         }
         private void serversMenuAdd_Click(object sender, RoutedEventArgs e)
@@ -666,7 +620,6 @@ namespace ValheimServerWarden
                 }
                 server.Start();
                 RefreshDataGrid();
-                logMessage($"Server {server.Name} starting...", LogEntryType.Normal);
             }
             catch (Exception ex)
             {
@@ -725,14 +678,6 @@ namespace ValheimServerWarden
                 var server = (ValheimServer)sender;
                 this.Dispatcher.Invoke(() =>
                 {
-                    if (e.ExitCode == 0 || e.ExitCode == -1073741510)
-                    {
-                        logMessage($"Server {server.Name} stopped.");
-                    }
-                    else
-                    {
-                        logMessage($"Server {server.Name}: exited with code {e.ExitCode}.", LogEntryType.Error);
-                    }
                     RefreshDataGrid();
                     if (server.Autostart && e.ExitCode != 0 && e.ExitCode != -1073741510 && !e.IntentionalExit && !server.Running)
                     {
@@ -743,22 +688,6 @@ namespace ValheimServerWarden
             catch (Exception ex)
             {
                 logMessage($"Error handling server exited event: {ex.Message}", LogEntryType.Error);
-            }
-        }
-
-        private void Server_OutputDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            try
-            {
-                Debug.WriteLine(e.Data);
-                this.Dispatcher.Invoke(() =>
-                {
-                    logMessage(e.Data);
-                });
-            }
-            catch (Exception ex)
-            {
-                logMessage($"Error receiving output from server: {ex.Message}", LogEntryType.Error);
             }
         }
 
@@ -775,34 +704,37 @@ namespace ValheimServerWarden
         public void logMessage(LogEntry entry)
         {
             logEntries.Add(entry);
-            if (!suppressLog)
+            this.Dispatcher.Invoke(() =>
             {
-                if (txtLog.Document.Blocks.Count > 0)
+                if (!suppressLog)
                 {
-                    txtLog.Document.Blocks.InsertBefore(txtLog.Document.Blocks.FirstBlock, (Block)entry);
+                    if (txtLog.Document.Blocks.Count > 0)
+                    {
+                        txtLog.Document.Blocks.InsertBefore(txtLog.Document.Blocks.FirstBlock, (Block)entry);
+                    }
+                    else
+                    {
+                        txtLog.Document.Blocks.Add((Block)entry);
+                    }
+                    if (entry.Message.Contains('\n'))
+                    {
+                        lblLastMessage.Content = entry.Message.Split('\n')[0];
+                    }
+                    else
+                    {
+                        lblLastMessage.Content = entry.Message;
+                    }
+                    lblLastMessage.Foreground = new SolidColorBrush(entry.Color);
+                    if (entry.Type == LogEntryType.Normal)
+                    {
+                        lblLastMessage.FontWeight = FontWeights.Normal;
+                    }
+                    else
+                    {
+                        lblLastMessage.FontWeight = FontWeights.Bold;
+                    }
                 }
-                else
-                {
-                    txtLog.Document.Blocks.Add((Block)entry);
-                }
-                if (entry.Message.Contains('\n'))
-                {
-                    lblLastMessage.Content = entry.Message.Split('\n')[0];
-                }
-                else
-                {
-                    lblLastMessage.Content = entry.Message;
-                }
-                lblLastMessage.Foreground = new SolidColorBrush(entry.Color);
-                if (entry.Type == LogEntryType.Normal)
-                {
-                    lblLastMessage.FontWeight = FontWeights.Normal;
-                }
-                else
-                {
-                    lblLastMessage.FontWeight = FontWeights.Bold;
-                }
-            }
+            });
             /*if (Properties.Settings.Default.CreateLogFile)
             {
                 StreamWriter writer = System.IO.File.AppendText("log.txt");
@@ -834,7 +766,6 @@ namespace ValheimServerWarden
             }
         }
 
-
         private void dgServers_AutoGeneratingColumn(object sender, DataGridAutoGeneratingColumnEventArgs e)
         {
             if (e.Column.Header.Equals("SaveDir") || 
@@ -849,7 +780,8 @@ namespace ValheimServerWarden
                 e.Column.Header.Equals("Public") ||
                 e.Column.Header.Equals("InstallMethod") ||
                 e.Column.Header.Equals("InstallPath") ||
-                e.Column.Header.Equals("LogEntries"))
+                e.Column.Header.Equals("LogEntries") ||
+                e.Column.Header.Equals("DisplayName"))
             {
                 e.Cancel = true;
             }
@@ -1065,6 +997,7 @@ namespace ValheimServerWarden
                     }
                 }
                 ServerDetailsWindow window = new ServerDetailsWindow(server);
+                window.WindowStartupLocation = WindowStartupLocation.CenterScreen;
                 this.serverDetailWindows.Add(window);
                 window.Closed += ((object sender, EventArgs e) =>
                 {
