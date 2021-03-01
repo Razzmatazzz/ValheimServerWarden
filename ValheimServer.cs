@@ -12,7 +12,7 @@ using System.ServiceProcess;
 using System.Runtime.InteropServices;
 using System.IO;
 using System.Globalization;
-using RazzLogging;
+using RazzTools;
 
 namespace ValheimServerWarden
 {
@@ -371,6 +371,9 @@ namespace ValheimServerWarden
         public string GetLogName()
         {
             string logname = this.Name.Replace(" ", "_");
+            logname = Regex.Replace(logname, @"[<]", "[");
+            logname = Regex.Replace(logname, @"[>]", "]");
+            foreach (var c in Path.GetInvalidFileNameChars()) { logname = logname.Replace(c, '-'); }
             //Regex rgx = new Regex("[^a-zA-Z0-9_-]");
             //logname = rgx.Replace(logname, "");
             //return $"{logname}-{this.startTime.ToString("yyyy-MM-dd_HH-mm-ss")}.log";

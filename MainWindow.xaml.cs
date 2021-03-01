@@ -23,7 +23,6 @@ using System.Net;
 using System.Text.RegularExpressions;
 using RazzTools;
 using GitHub;
-using RazzLogging;
 
 namespace ValheimServerWarden
 {
@@ -62,7 +61,7 @@ namespace ValheimServerWarden
             {
                 Height = Properties.Settings.Default.MainWindowHeight;
             }
-            LogEntry.DefaultColor = ((SolidColorBrush)this.Foreground).Color;
+            LogEntry.NormalColor = ((SolidColorBrush)this.Foreground).Color;
             logEntries = new List<LogEntry>();
             serverDetailWindows = new List<ServerDetailsWindow>();
             serverLogWindows = new List<ServerLogWindow>();
@@ -97,7 +96,13 @@ namespace ValheimServerWarden
             notifyIcon.BalloonTipClicked += NotifyIcon_Click;
             notifyIcon.Text = "Valheim Server Warden";
             this.notifyIcon.Icon = ValheimServerWarden.Properties.Resources.vsw2;
-            notifyIcon.Click += NotifyIcon_Click;
+            notifyIcon.MouseClick += NotifyIcon_MouseClick;
+            System.Windows.Forms.ContextMenuStrip cm = new System.Windows.Forms.ContextMenuStrip();
+            System.Windows.Forms.ToolStripMenuItem menuQuit = new System.Windows.Forms.ToolStripMenuItem();
+            menuQuit.Text = "Exit";
+            menuQuit.Click += NotifyMenuQuit_Click;
+            cm.Items.Add(menuQuit);
+            notifyIcon.ContextMenuStrip = cm;
             storedWindowState = WindowState.Normal;
 
             servers = new List<ValheimServer>();
@@ -126,10 +131,37 @@ namespace ValheimServerWarden
             checkForRunningServers();
         }
 
+        private void NotifyMenuQuit_Click(object sender, EventArgs e)
+        {
+            foreach (var server in servers)
+            {
+                if (server.Running)
+                {
+                    logMessage($"Stop all running servers before exiting.", LogEntryType.Error);
+                    Show();
+                    WindowState = storedWindowState;
+                    return;
+                }
+            }
+            Close();
+        }
+
         private void NotifyIcon_Click(object sender, EventArgs e)
         {
             Show();
             WindowState = storedWindowState;
+        }
+        private void NotifyIcon_MouseClick(object sender, System.Windows.Forms.MouseEventArgs e)
+        {
+            if (e.Button == System.Windows.Forms.MouseButtons.Left)
+            {
+                Show();
+                WindowState = storedWindowState;
+            }
+            else
+            {
+                //context menu?
+            }
         }
 
         private void DgServers_ContextMenuOpening(object sender, ContextMenuEventArgs e)
@@ -761,8 +793,8 @@ namespace ValheimServerWarden
                 {
                     lblLastMessage.Content = entry.Message;
                 }
-                lblLastMessage.Foreground = new SolidColorBrush(entry.MessageColor);
-                if (entry.MessageColor.Equals(LogEntry.DefaultColor))
+                lblLastMessage.Foreground = new SolidColorBrush(entry.Color);
+                if (entry.Type == LogEntryType.Normal)
                 {
                     lblLastMessage.FontWeight = FontWeights.Normal;
                 }
@@ -906,11 +938,11 @@ namespace ValheimServerWarden
         {
             ThemeManager.Current.ApplicationTheme = theme;
             //ThemeManager.Current.AccentColor = Colors.Orange;
-            LogEntry.DefaultColor = ((SolidColorBrush)this.Foreground).Color;
+            LogEntry.NormalColor = ((SolidColorBrush)this.Foreground).Color;
             if (logEntries.Count > 0)
             {
                 var lastEntry = logEntries[logEntries.Count - 1];
-                lblLastMessage.Foreground = new SolidColorBrush(lastEntry.MessageColor);
+                lblLastMessage.Foreground = new SolidColorBrush(lastEntry.Color);
             }
             txtLog.Document.Blocks.Clear();
             foreach (var entry in logEntries)

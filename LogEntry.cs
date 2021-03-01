@@ -8,11 +8,13 @@ using System.Windows.Documents;
 using System.Windows;
 using System.Diagnostics;
 
-namespace RazzLogging
+namespace RazzTools
 {
     public class LogEntry
     {
-        public static Color DefaultColor { get; set; } = Color.FromArgb(System.Drawing.SystemColors.WindowText.A, System.Drawing.SystemColors.WindowText.R, System.Drawing.SystemColors.WindowText.G, System.Drawing.SystemColors.WindowText.B);
+        public static Color NormalColor { get; set; } = Color.FromArgb(System.Drawing.SystemColors.WindowText.A, System.Drawing.SystemColors.WindowText.R, System.Drawing.SystemColors.WindowText.G, System.Drawing.SystemColors.WindowText.B);
+        public static Color SuccessColor { get; set; } = Color.FromRgb(50, 175, 50);
+        public static Color ErrorColor { get; set; } = Color.FromRgb(175, 50, 50);
         private string message;
         private LogEntryType logMessageType;
         private DateTime timeStamp;
@@ -39,19 +41,19 @@ namespace RazzLogging
             }
         }
         public bool ShowTimeStamp { get; set; }
-        public Color MessageColor
+        public Color Color
         {
             get
             {
                 if (Type == LogEntryType.Success)
                 {
-                    return Color.FromRgb(50, 175, 50);
+                    return SuccessColor;
                 }
                 else if (Type == LogEntryType.Error)
                 {
-                    return Color.FromRgb(175, 50, 50);
+                    return ErrorColor;
                 }
-                return DefaultColor;
+                return NormalColor;
             }
         }
         public LogEntry(string msg, LogEntryType messageType)
@@ -69,15 +71,15 @@ namespace RazzLogging
         {
             return Message;
         }
-        public static explicit operator Paragraph(LogEntry logMessage)
+        public static explicit operator Paragraph(LogEntry entry)
         {
-            string msg = logMessage.Message;
-            if (logMessage.ShowTimeStamp)
+            string msg = entry.Message;
+            if (entry.ShowTimeStamp)
             {
-                msg = $"{logMessage.TimeStamp.ToString()}: {msg}";
+                msg = $"{entry.TimeStamp.ToString()}: {msg}";
             }
             Run run = new Run(msg);
-            run.Foreground = new SolidColorBrush(logMessage.MessageColor);
+            run.Foreground = new SolidColorBrush(entry.Color);
             Paragraph paragraph = new Paragraph(run);
             paragraph.Margin = new Thickness(0);
             return paragraph;
