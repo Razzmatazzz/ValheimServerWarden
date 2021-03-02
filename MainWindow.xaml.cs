@@ -23,6 +23,7 @@ using System.Net;
 using System.Text.RegularExpressions;
 using RazzTools;
 using GitHub;
+using System.Data;
 
 namespace ValheimServerWarden
 {
@@ -302,7 +303,54 @@ namespace ValheimServerWarden
         }
         private void btnServerPath_Click(object sender, RoutedEventArgs e)
         {
-            System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+            var serverpath = new FileInfo(txtServerPath.Text).Directory.FullName;
+            var openFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
+            if (Directory.Exists(serverpath))
+            {
+                openFolderDialog.SelectedPath = serverpath;
+            }
+            openFolderDialog.UseDescriptionForTitle = true;
+            openFolderDialog.Description = "Default server installation folder";
+            var result = openFolderDialog.ShowDialog();
+            if (result == System.Windows.Forms.DialogResult.OK)
+            {
+                var folderName = openFolderDialog.SelectedPath;
+                if (folderName.Equals(serverpath))
+                {
+                    return;
+                }
+                if (!File.Exists($@"{folderName}\valheim_server.exe") && cmbServerType.SelectedIndex == (int)ValheimServer.ServerInstallMethod.SteamCMD && File.Exists(Properties.Settings.Default.SteamCMDPath))
+                {
+                    var mmb = new ModernMessageBox(this);
+                    var install = mmb.Show("valheim_server.exe was not found in this folder, do you want to install it via SteamCMD?",
+                                     "Install Valheim dedicated server?", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+                    if (install == MessageBoxResult.Yes)
+                    {
+                        try
+                        {
+                            var process = new Process();
+                            process.StartInfo.FileName = Properties.Settings.Default.SteamCMDPath;
+                            process.StartInfo.Arguments = $"+login anonymous +force_install_dir \"{folderName}\" +app_update {ValheimServer.SteamID} +quit";
+                            //process.EnableRaisingEvents = true;
+                            //process.Exited += SteamCmdProcess_Exited;
+                            process.Start();
+                            process.WaitForExit();
+                        }
+                        catch (Exception ex)
+                        {
+                            logMessage($"Error installing dedicated server: {ex.Message}", LogEntryType.Error);
+                        }
+                    }
+                }
+                folderName += "\\valheim_server.exe";
+                txtServerPath.Text = folderName;
+                Properties.Settings.Default.ServerFilePath = folderName;
+                Properties.Settings.Default.Save();
+            }
+
+
+
+            /*System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
             if (txtServerPath.Text.Length > 0)
             {
                 string filepath = txtServerPath.Text;
@@ -332,7 +380,7 @@ namespace ValheimServerWarden
                 txtServerPath.Text = fileName;
                 Properties.Settings.Default.ServerFilePath = fileName;
                 Properties.Settings.Default.Save();
-            }
+            }*/
         }
 
         private void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
@@ -766,31 +814,6 @@ namespace ValheimServerWarden
             }
         }
 
-        private void dgServers_AutoGeneratingColumn(object sender, DataGridAutoGeneratingColumnEventArgs e)
-        {
-            if (e.Column.Header.Equals("SaveDir") || 
-                e.Column.Header.Equals("Players") || 
-                e.Column.Header.Equals("Running") || 
-                e.Column.Header.Equals("StartTime") || 
-                e.Column.Header.Equals("PlayerList") || 
-                e.Column.Header.Equals("RestartHours") || 
-                e.Column.Header.Equals("DiscordWebhook") ||
-                e.Column.Header.Equals("DefaultWebhookMessages") ||
-                e.Column.Header.Equals("DiscordWebhookMessages") ||
-                e.Column.Header.Equals("Public") ||
-                e.Column.Header.Equals("InstallMethod") ||
-                e.Column.Header.Equals("InstallPath") ||
-                e.Column.Header.Equals("LogEntries") ||
-                e.Column.Header.Equals("DisplayName"))
-            {
-                e.Cancel = true;
-            }
-            else if (e.Column.Header.Equals("PlayerCount"))
-            {
-                e.Column.Header = "# Players";
-            }
-        }
-
         private void menuEditPreferences_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -1148,7 +1171,7 @@ namespace ValheimServerWarden
         private void cmbServerType_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (!this.IsLoaded) return;
-            if (cmbServerType.SelectedItem.ToString() == "SteamCMD" && !File.Exists(txtSteamCmdPath.Text+"\\steamcmd.exe"))
+            if (cmbServerType.SelectedItem.ToString() == "SteamCMD" && !File.Exists(txtSteamCmdPath.Text))
             {
                 var mmb = new ModernMessageBox(this);
                 mmb.Show("You must install SteamCMD before you can update any servers via SteamCMD.", "SteamCMD Not Installed", MessageBoxButton.OK, MessageBoxImage.Warning);

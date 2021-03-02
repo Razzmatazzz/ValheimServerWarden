@@ -126,17 +126,17 @@ namespace ValheimServerWarden
                             btnConnect.IsEnabled = true;
                             btnConnect.Content = FindResource("Connect");
                         }
-                        btnSteamCmd.IsEnabled = false;
+                        menuSteamCmdUpdate.Visibility = Visibility.Collapsed;
                     }
                     else if (status == ValheimServer.ServerStatus.Stopped)
                     {
                         btnStart.IsEnabled = true;
                         btnStart.Content = FindResource("Start");
-                        btnSteamCmd.IsEnabled = true;
+                        menuSteamCmdUpdate.Visibility = Visibility.Visible;
                     } 
                     else
                     {
-                        btnSteamCmd.IsEnabled = false;
+                        menuSteamCmdUpdate.Visibility = Visibility.Collapsed;
                     }
                     btnLog.IsEnabled = (File.Exists(Server.GetLogName()));
                     btnLog.Visibility = (File.Exists(Server.GetLogName())) ? Visibility.Visible : Visibility.Hidden;
@@ -144,10 +144,12 @@ namespace ValheimServerWarden
                     if (Properties.Settings.Default.SteamCMDPath != null && Properties.Settings.Default.SteamCMDPath.Length > 0 && File.Exists(Properties.Settings.Default.SteamCMDPath) && Server.InstallMethod == ValheimServer.ServerInstallMethod.SteamCMD)
                     {
                         btnSteamCmd.Visibility = Visibility.Visible;
+                        chkUpdateOnRestart.Visibility = Visibility.Visible;
                     }
                     else
                     {
                         btnSteamCmd.Visibility = Visibility.Collapsed;
+                        chkUpdateOnRestart.Visibility = Visibility.Collapsed;
                     }
                 }
                 catch (Exception ex)
@@ -216,7 +218,7 @@ namespace ValheimServerWarden
                 txtServerDir.Text = Server.InstallPath;
                 cmbServerType.SelectedIndex = (int)Server.InstallMethod;
                 chkAutostart.IsChecked = Server.Autostart;
-                chkLog.IsChecked = Server.Log;
+                chkRawLog.IsChecked = Server.RawLog;
 
                 if (Server.RestartHours > 0)
                 {
@@ -229,6 +231,7 @@ namespace ValheimServerWarden
                     chkAutoRestart.IsChecked = false;
                     txtRestartInterval.IsEnabled = false;
                 }
+                chkUpdateOnRestart.IsChecked = Server.UpdateOnRestart;
             }
             catch (Exception ex)
             {
@@ -379,12 +382,12 @@ namespace ValheimServerWarden
             Server.InstallPath = txtServerDir.Text;
             Server.InstallMethod = (ValheimServer.ServerInstallMethod)cmbServerType.SelectedIndex;
             Server.Autostart = chkAutostart.IsChecked.GetValueOrDefault();
-            Server.Log = chkLog.IsChecked.GetValueOrDefault();
+            Server.RawLog = chkRawLog.IsChecked.GetValueOrDefault();
             int restartHours = Server.RestartHours;
             if (chkAutoRestart.IsChecked.GetValueOrDefault())
             {
                 int.TryParse(txtRestartInterval.Text, out restartHours);
-            } 
+            }
             else
             {
                 restartHours = 0;
@@ -398,6 +401,7 @@ namespace ValheimServerWarden
                 txtRestartInterval.Text = "";
                 chkAutoRestart.IsChecked = false;
             }
+            Server.UpdateOnRestart = chkUpdateOnRestart.IsChecked.GetValueOrDefault();
             OnEditedServer(new ServerEventArgs(this.Server));
             RefreshControls();
             if (Server.Running)
@@ -438,17 +442,6 @@ namespace ValheimServerWarden
         private void menuSaveDirReset_Click(object sender, RoutedEventArgs e)
         {
             txtSaveDir.Text = "";
-        }
-
-        private void dgPlayers_AutoGeneratingColumn(object sender, DataGridAutoGeneratingColumnEventArgs e)
-        {
-            if (e.Column.Header.Equals("JoinTime"))
-            {
-                e.Column.Header = "Joined";
-            } else if (e.Column.Header.Equals("SteamID"))
-            {
-                e.Cancel = true;
-            }
         }
 
         private void dgPlayers_ContextMenuOpening(object sender, ContextMenuEventArgs e)
@@ -512,12 +505,7 @@ namespace ValheimServerWarden
         {
             if (!Server.Running)
             {
-                var process = new Process();
-                process.StartInfo.FileName = Properties.Settings.Default.SteamCMDPath;
-                process.StartInfo.Arguments = $"+login anonymous +force_install_dir \"{(new FileInfo(Server.InstallPath).Directory.FullName)}\" +app_update {ValheimServer.SteamID} +quit";
-                //process.EnableRaisingEvents = true;
-                process.Start();
-                process.WaitForExit();
+                Server.Update();
             } 
             else
             {
@@ -537,14 +525,17 @@ namespace ValheimServerWarden
         {
             try
             {
-                if (txtServerLog.Document.Blocks.Count > 0)
+                this.Dispatcher.Invoke(() =>
                 {
-                    txtServerLog.Document.Blocks.InsertBefore(txtServerLog.Document.Blocks.FirstBlock, (Paragraph)entry);
-                }
-                else
-                {
-                    txtServerLog.Document.Blocks.Add((Paragraph)entry);
-                }
+                    if (txtServerLog.Document.Blocks.Count > 0)
+                    {
+                        txtServerLog.Document.Blocks.InsertBefore(txtServerLog.Document.Blocks.FirstBlock, (Paragraph)entry);
+                    }
+                    else
+                    {
+                        txtServerLog.Document.Blocks.Add((Paragraph)entry);
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -553,10 +544,10 @@ namespace ValheimServerWarden
         }
         private void Window_ContentRendered(object sender, EventArgs e)
         {
-            tabsServer.SelectedIndex = 1;
+            /*tabsServer.SelectedIndex = 1;
             UpdateLayout();
             SizeToContent = SizeToContent.Manual;
-            tabsServer.SelectedIndex = 0;
+            tabsServer.SelectedIndex = 0;*/
         }
 
         private void btnServerDir_Click(object sender, RoutedEventArgs e)
@@ -573,7 +564,7 @@ namespace ValheimServerWarden
             if (result == System.Windows.Forms.DialogResult.OK)
             {
                 var folderName = openFolderDialog.SelectedPath;
-                if (folderName.Equals(txtServerDir.Text))
+                if (folderName.Equals(serverpath))
                 {
                     return;
                 }
@@ -588,8 +579,8 @@ namespace ValheimServerWarden
                         {
                             var process = new Process();
                             process.StartInfo.FileName = Properties.Settings.Default.SteamCMDPath;
-                            process.StartInfo.Arguments = $"+login anonymous +force_install_dir \"{folderName}\" +app_update {ValheimServer.SteamID} +validate +quit";
-                            process.EnableRaisingEvents = true;
+                            process.StartInfo.Arguments = $"+login anonymous +force_install_dir \"{folderName}\" +app_update {ValheimServer.SteamID} +quit";
+                            //process.EnableRaisingEvents = true;
                             //process.Exited += SteamCmdProcess_Exited;
                             process.Start();
                             process.WaitForExit();
@@ -732,6 +723,11 @@ namespace ValheimServerWarden
                     txtServerLog.Document.Blocks.Add((Block)entry);
                 }
             }
+        }
+
+        private void menuSteamCmdCheckUpdate_Click(object sender, RoutedEventArgs e)
+        {
+            Server.CheckForUpdate();
         }
     }
 

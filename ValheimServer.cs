@@ -23,7 +23,8 @@ namespace ValheimServerWarden
             Stopped,
             Running,
             Starting,
-            Stopping
+            Stopping,
+            Updating
         }
         public enum ServerInstallMethod
         {
@@ -40,8 +41,9 @@ namespace ValheimServerWarden
             internal string savedir;
             internal bool pub;
             internal bool autostart;
-            internal bool log;
+            internal bool rawlog;
             internal int restartHours;
+            internal bool updateOnRestart;
             internal string discordWebhook;
         }
         public event EventHandler<UpdatedEventArgs> Updated;
@@ -58,6 +60,8 @@ namespace ValheimServerWarden
         public event EventHandler<ServerExitedEventArgs> Exited;
         public event EventHandler<ServerExitedEventArgs> ExitedUnexpectedly;
         public event EventHandler<ServerErrorEventArgs> ErrorOccurred;
+        public event EventHandler<UpdateCheckEventArgs> CheckedForUpdate;
+        public event EventHandler<UpdateCompleteEventArgs> UpdateComplete;
         public event DataReceivedEventHandler OutputDataReceived
         {
             add
@@ -190,15 +194,15 @@ namespace ValheimServerWarden
                 this.data.autostart = value;
             }
         }
-        public bool Log
+        public bool RawLog
         {
             get
             {
-                return this.data.log;
+                return this.data.rawlog;
             }
             set
             {
-                this.data.log = value;
+                this.data.rawlog = value;
             }
         }
         public int RestartHours
@@ -220,6 +224,17 @@ namespace ValheimServerWarden
                 {
                     restartTimer.Enabled = false;
                 }
+            }
+        }
+        public bool UpdateOnRestart
+        {
+            get
+            {
+                return this.data.updateOnRestart;
+            }
+            set
+            {
+                this.data.updateOnRestart = value;
             }
         }
         public string DiscordWebhook
@@ -324,7 +339,7 @@ namespace ValheimServerWarden
                 }
             }
         }
-        public ValheimServer(string name, int port, string world, string password, bool pubserver, bool autostart, bool log, int restarthours, string discordwebhook, Dictionary<string,string> discordmessages, ServerInstallMethod install, string instpath)
+        public ValheimServer(string name, int port, string world, string password, bool pubserver, bool autostart, bool rawlog, int restarthours, bool updateonrestart, string discordwebhook, Dictionary<string,string> discordmessages, ServerInstallMethod install, string instpath)
         {
             this.data.name = name;
             this.data.port = 2456;
@@ -333,8 +348,9 @@ namespace ValheimServerWarden
             this.data.savedir = "";
             this.data.pub = pubserver;
             this.data.autostart = autostart;
-            this.data.log = log;
+            this.data.rawlog = rawlog;
             this.data.restartHours = restarthours;
+            this.data.updateOnRestart = updateonrestart;
             this.data.discordWebhook = discordwebhook;
             this._discordWebhookMesssages = discordmessages;
             InstallMethod = install;
@@ -378,11 +394,11 @@ namespace ValheimServerWarden
             }
         }
 
-        public ValheimServer() : this("My Server", 2456, "Dedicated", "Secret", false, false, false, 0, null, new Dictionary<string,string>(), ServerInstallMethod.Manual, Properties.Settings.Default.ServerFilePath)
+        public ValheimServer() : this("My Server", 2456, "Dedicated", "Secret", false, false, false, 0, false, null, new Dictionary<string,string>(), ServerInstallMethod.Manual, Properties.Settings.Default.ServerFilePath)
         {
         }
 
-        public ValheimServer(string name) : this(name, 2456, "Dedicated", "Secret", false, false, false, 0, null, new Dictionary<string,string>(), ServerInstallMethod.Manual, Properties.Settings.Default.ServerFilePath)
+        public ValheimServer(string name) : this(name, 2456, "Dedicated", "Secret", false, false, false, 0, false, null, new Dictionary<string,string>(), ServerInstallMethod.Manual, Properties.Settings.Default.ServerFilePath)
         {
 
         }
@@ -463,7 +479,7 @@ namespace ValheimServerWarden
             string msg = e.Data;
             if (msg == null) return;
             //Debug.WriteLine(msg);
-            if (this.Log)
+            if (this.RawLog)
             {
                 try
                 {
@@ -640,7 +656,7 @@ namespace ValheimServerWarden
             this.intentionalExit = false;
             new Thread(() =>
             {
-                if (this.Log)
+                if (this.RawLog)
                 {
                     System.IO.File.WriteAllText(this.GetLogName(),"");
                 }
@@ -742,7 +758,15 @@ namespace ValheimServerWarden
                 OnServerExited(new ServerExitedEventArgs(this.process.ExitCode, this.intentionalExit));
                 if (scheduledRestart)
                 {
-                    this.Start();
+                    if (this.UpdateOnRestart && this.InstallMethod == ServerInstallMethod.SteamCMD)
+                    {
+                        this.CheckedForUpdate += ValheimServer_CheckedForUpdateAndRestart;
+                        this.CheckForUpdate();
+                    }
+                    else
+                    {
+                        this.Start();
+                    }
                 } else if (unwantedexit)
                 {
                     OnServerExitedUnexpectedly(new ServerExitedEventArgs(this.process.ExitCode, this.intentionalExit));
@@ -753,6 +777,27 @@ namespace ValheimServerWarden
                 }
             }
         }
+
+        private void ValheimServer_CheckedForUpdateAndRestart(object sender, UpdateCheckEventArgs e)
+        {
+            this.CheckedForUpdate -= ValheimServer_CheckedForUpdateAndRestart;
+            if (e.UpdateAvailable)
+            {
+                this.UpdateComplete += ValheimServer_UpdateCompleteAndStart;
+                this.Update();
+            }
+            else
+            {
+                this.Start();
+            }
+        }
+
+        private void ValheimServer_UpdateCompleteAndStart(object sender, UpdateCompleteEventArgs e)
+        {
+            this.UpdateComplete -= ValheimServer_UpdateCompleteAndStart;
+            this.Start();
+        }
+
         void IEditableObject.BeginEdit()
         {
             if (!inTxn)
@@ -811,9 +856,9 @@ namespace ValheimServerWarden
                     changedValues["Autostart"] = backupData.autostart.ToString();
                     //OnUpdated(new UpdatedEventArgs("Autostart"));
                 }
-                if (backupData.log != data.log)
+                if (backupData.rawlog != data.rawlog)
                 {
-                    changedValues["Log"] = backupData.log.ToString();
+                    changedValues["RawLog"] = backupData.rawlog.ToString();
                     //OnUpdated(new UpdatedEventArgs("Log"));
                 }
                 if (backupData.restartHours != data.restartHours)
@@ -992,6 +1037,43 @@ namespace ValheimServerWarden
             EventHandler<ServerErrorEventArgs> handler = ErrorOccurred;
             if (null != handler) handler(this, args);
         }
+        private void OnCheckedForUpdate(UpdateCheckEventArgs args)
+        {
+            if (args.Success)
+            {
+                if (args.UpdateAvailable)
+                {
+                    addToLog($"Server update available.", LogEntryType.Success);
+                }
+                else
+                {
+                    addToLog($"No server update available.");
+                }
+            }
+            else
+            {
+                addToLog(args.Message, LogEntryType.Error);
+            }
+            EventHandler<UpdateCheckEventArgs> handler = CheckedForUpdate;
+            if (null != handler) handler(this, args);
+        }
+        private void OnUpdateComplete(UpdateCompleteEventArgs args)
+        {
+            if (args.Updated)
+            {
+                addToLog("Update complete.", LogEntryType.Success);
+            }
+            else if (args.Result == UpdateCompleteEventArgs.UpdateResults.AlreadyUpToDate)
+            {
+                addToLog("Server already up to date.");
+            }
+            else
+            {
+                addToLog(args.Message, LogEntryType.Error);
+            }
+            EventHandler<UpdateCompleteEventArgs> handler = UpdateComplete;
+            if (null != handler) handler(this, args);
+        }
         /*private void OutputReceived(DataReceivedEventArgs args)
         {
             EventHandler<DataReceivedEventArgs> handler = OutputDataReceived;
@@ -1011,6 +1093,118 @@ namespace ValheimServerWarden
         private void addToLog(string message)
         {
             addToLog(message, LogEntryType.Normal);
+        }
+        public void CheckForUpdate()
+        {
+            try
+            {
+                new Thread(() =>
+                {
+                    addToLog($"Checking for server update...");
+                    var process = new Process();
+                    process.StartInfo.FileName = Properties.Settings.Default.SteamCMDPath;
+                    process.StartInfo.Arguments = $"+login anonymous +app_info_update 1 +app_info_print {ValheimServer.SteamID} +quit";
+                    process.StartInfo.CreateNoWindow = true;
+                    process.EnableRaisingEvents = true;
+                    process.StartInfo.RedirectStandardOutput = true;
+                    //process.Exited += SteamCmdProcess_Exited;
+
+                    process.Exited += ((object sender, EventArgs e) =>
+                    {
+                        var process = (Process)sender;
+                        var output = process.StandardOutput.ReadToEnd();
+                        output = output.Substring(output.IndexOf("\"depots\""));
+                        output = output.Substring(output.IndexOf("\"branches\""));
+                        output = output.Substring(output.IndexOf("\"public\""));
+                        output = output.Substring(0, output.IndexOf("}"));
+                        Regex rx = new Regex("\"buildid\"\\s+\"(\\d+)\"", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                        Match match = rx.Match(output);
+                        if (match.Success)
+                        {
+                            var remoteBuild = Convert.ToInt32(match.Groups[1].ToString());
+                            if (remoteBuild == 0)
+                            {
+                                OnCheckedForUpdate(new UpdateCheckEventArgs($"Remote buildid {match.Groups[1]} is not a valid number."));
+                                return;
+                            }
+                            var manifestpath = new FileInfo(this.InstallPath).DirectoryName + $@"\steamapps\appmanifest_{ValheimServer.SteamID}.acf";
+                            if (File.Exists(manifestpath))
+                            {
+                                var manifest = File.ReadAllText(manifestpath);
+                                match = rx.Match(manifest);
+                                if (match.Success)
+                                {
+                                    var localBuild = Convert.ToInt32(match.Groups[1].ToString());
+                                    if (localBuild == 0)
+                                    {
+                                        OnCheckedForUpdate(new UpdateCheckEventArgs($"Local buildid {match.Groups[1]} is not a valid number."));
+                                        return;
+                                    }
+                                    OnCheckedForUpdate(new UpdateCheckEventArgs(true, remoteBuild > localBuild));
+                                }
+                                else
+                                {
+                                    OnCheckedForUpdate(new UpdateCheckEventArgs($"Could not find local buildid for update check."));
+                                }
+                            }
+                            else
+                            {
+                                OnCheckedForUpdate(new UpdateCheckEventArgs($"Could not find {manifestpath} for update check."));
+                            }
+                        }
+                        else
+                        {
+                            OnCheckedForUpdate(new UpdateCheckEventArgs($"Could find not remote buildid for update check."));
+                        }
+                    });
+                    process.Start();
+                    //process.WaitForExit();
+                }).Start();
+            }
+            catch (Exception ex)
+            {
+                OnCheckedForUpdate(new UpdateCheckEventArgs($"Error checking for new version: {ex.Message}"));
+            }
+        }
+        public void Update()
+        {
+            if (!this.Running)
+            {
+                addToLog($"Updating server...");
+                var process = new Process();
+                process.StartInfo.FileName = Properties.Settings.Default.SteamCMDPath;
+                process.StartInfo.Arguments = $"+login anonymous +force_install_dir \"{(new FileInfo(this.InstallPath).Directory.FullName)}\" +app_update {ValheimServer.SteamID} +quit";
+                process.StartInfo.CreateNoWindow = true;
+                process.EnableRaisingEvents = true;
+                process.StartInfo.RedirectStandardOutput = true;
+                process.Exited += ((object sender, EventArgs e) =>
+                {
+                    var process = (Process)sender;
+                    var output = process.StandardOutput.ReadToEnd();
+                    //Debug.Write(output);
+                    Regex rx = new Regex($"App '{SteamID}' already up to date.", RegexOptions.Compiled);
+                    Match match = rx.Match(output);
+                    if (match.Success)
+                    {
+                        OnUpdateComplete(new UpdateCompleteEventArgs(UpdateCompleteEventArgs.UpdateResults.AlreadyUpToDate));
+                        return;
+                    }
+                    rx = new Regex($"App '{SteamID}' fully installed.", RegexOptions.Compiled);
+                    match = rx.Match(output);
+                    if (match.Success)
+                    {
+                        OnUpdateComplete(new UpdateCompleteEventArgs(UpdateCompleteEventArgs.UpdateResults.Updated));
+                        return;
+                    }
+                    OnUpdateComplete(new UpdateCompleteEventArgs("Update probably failed. Unrecognized output from SteamCMD."));
+                });
+                process.Start();
+                //process.WaitForExit();
+            }
+            else
+            {
+                OnUpdateComplete(new UpdateCompleteEventArgs("Please stop the server before updating."));
+            }
         }
         public static void TerminateAll(Process[] servers)
         {
@@ -1133,6 +1327,73 @@ namespace ValheimServerWarden
             {
                 return _exception;
             }
+        }
+    }
+    public class UpdateCheckEventArgs : EventArgs
+    {
+        private readonly bool _updateAvailable;
+        private readonly bool _success;
+        private readonly string _message;
+        public UpdateCheckEventArgs(bool success, bool updateAvailable)
+        {
+            _success = success;
+            _updateAvailable = updateAvailable;
+            if (success)
+            {
+                _message = "Success";
+            }
+            else
+            {
+                _message = "Failed";
+            }
+        }
+        public UpdateCheckEventArgs(string errorMessage) : this(false,false)
+        {
+            _message = errorMessage;
+        }
+        public bool UpdateAvailable
+        {
+            get { return _updateAvailable; }
+        }
+        public bool Success
+        {
+            get { return _success; }
+        }
+        public string Message
+        {
+            get { return _message; }
+        }
+    }
+    public class UpdateCompleteEventArgs : EventArgs
+    {
+        public enum UpdateResults
+        {
+            Updated,
+            AlreadyUpToDate,
+            Failed
+        }
+        private readonly UpdateResults _result;
+        private readonly string _message;
+        public UpdateCompleteEventArgs(UpdateResults result)
+        {
+            _result = result;
+            _message = "";
+        }
+        public UpdateCompleteEventArgs(string failMessage) : this(UpdateResults.Failed)
+        {
+            _message = failMessage;
+        }
+        public bool Updated
+        {
+            get { return _result == UpdateResults.Updated; }
+        }
+        public UpdateResults Result
+        {
+            get { return _result; }
+        }
+        public string Message
+        {
+            get { return _message; }
         }
     }
 }

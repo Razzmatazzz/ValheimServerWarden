@@ -31,7 +31,17 @@
         </Grid.RowDefinitions>
         <TabControl x:Name="tabsMain" Grid.Row="0">
             <TabItem Header="Servers">
-                <DataGrid x:Name="dgServers" Margin="0" CellEditEnding="dgServers_CellEditEnding" SelectionMode="Single" CanUserAddRows="False" RowEditEnding="dgServers_RowEditEnding" AutoGeneratingColumn="dgServers_AutoGeneratingColumn" BeginningEdit="dgServers_BeginningEdit" CanUserDeleteRows="False">
+                <DataGrid x:Name="dgServers" Margin="0" CellEditEnding="dgServers_CellEditEnding" SelectionMode="Single" CanUserAddRows="False" AutoGenerateColumns="False" RowEditEnding="dgServers_RowEditEnding" BeginningEdit="dgServers_BeginningEdit" CanUserDeleteRows="False">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Name" Binding="{Binding Path=Name}"/>
+                        <DataGridTextColumn Header="Port" Binding="{Binding Path=Port}"/>
+                        <DataGridTextColumn Header="World" Binding="{Binding Path=World}"/>
+                        <DataGridTextColumn Header="Password" Binding="{Binding Path=Password}"/>
+                        <DataGridCheckBoxColumn Header="Autostart" Binding="{Binding Path=Autostart}"/>
+                        <DataGridCheckBoxColumn Header="Log" Binding="{Binding Path=RawLog}"/>
+                        <DataGridTextColumn Header="Status" IsReadOnly="True" Binding="{Binding Path=Status, Mode=OneWay}"/>
+                        <DataGridTextColumn Header="# Players" IsReadOnly="True" Binding="{Binding Path=PlayerCount, Mode=OneWay}"/>
+                    </DataGrid.Columns>
                     <DataGrid.ContextMenu>
                         <ContextMenu>
                             <MenuItem x:Name="serversMenuAdd" Header="Add" Click="serversMenuAdd_Click">
