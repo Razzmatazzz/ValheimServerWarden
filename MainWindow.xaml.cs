@@ -303,7 +303,10 @@ namespace ValheimServerWarden
         }
         private void btnServerPath_Click(object sender, RoutedEventArgs e)
         {
-            var serverpath = new FileInfo(txtServerPath.Text).Directory.FullName;
+            var serverpath = "";
+            if (txtServerPath.Text != "") {
+                serverpath = new FileInfo(txtServerPath.Text).Directory.FullName;
+            }
             var openFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
             if (Directory.Exists(serverpath))
             {
