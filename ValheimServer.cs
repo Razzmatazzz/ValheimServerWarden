@@ -1101,6 +1101,11 @@ namespace ValheimServerWarden
                 new Thread(() =>
                 {
                     addToLog($"Checking for server update...");
+                    if (!File.Exists(Properties.Settings.Default.SteamCMDPath))
+                    {
+                        OnCheckedForUpdate(new UpdateCheckEventArgs($"SteamCMD was not found at {Properties.Settings.Default.SteamCMDPath}."));
+                        return;
+                    }
                     var process = new Process();
                     process.StartInfo.FileName = Properties.Settings.Default.SteamCMDPath;
                     process.StartInfo.Arguments = $"+login anonymous +app_info_update 1 +app_info_print {ValheimServer.SteamID} +quit";
@@ -1171,6 +1176,11 @@ namespace ValheimServerWarden
             if (!this.Running)
             {
                 addToLog($"Updating server...");
+                if (!File.Exists(Properties.Settings.Default.SteamCMDPath))
+                {
+                    OnUpdateComplete(new UpdateCompleteEventArgs($"SteamCMD was not found at {Properties.Settings.Default.SteamCMDPath}."));
+                    return;
+                }
                 var process = new Process();
                 process.StartInfo.FileName = Properties.Settings.Default.SteamCMDPath;
                 process.StartInfo.Arguments = $"+login anonymous +force_install_dir \"{(new FileInfo(this.InstallPath).Directory.FullName)}\" +app_update {ValheimServer.SteamID} +quit";
