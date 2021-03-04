@@ -20,6 +20,12 @@
                     <Image x:Key="StartGrey" Source="Resources/StartWithoutDebug_grey_32x.png"/>
                     <Image x:Key="Stop" Source="Resources/Stop_32x.png"/>
                     <Image x:Key="StopGrey" Source="Resources/Stop_grey_32x.png"/>
+                    <Storyboard x:Key="WorkingStoryboard" x:Name="storyboardWorking">
+                        <DoubleAnimation
+                            Storyboard.TargetName="WorkingRotation"
+                            Storyboard.TargetProperty="Angle"
+                            From="0.0" To="360" Duration="0:0:1" RepeatBehavior="Forever" />
+                    </Storyboard>
                 </ResourceDictionary>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
@@ -31,7 +37,7 @@
         </Grid.RowDefinitions>
         <TabControl x:Name="tabsMain" Grid.Row="0">
             <TabItem Header="Servers">
-                <DataGrid x:Name="dgServers" Margin="0" CellEditEnding="dgServers_CellEditEnding" SelectionMode="Single" CanUserAddRows="False" AutoGenerateColumns="False" RowEditEnding="dgServers_RowEditEnding" BeginningEdit="dgServers_BeginningEdit" CanUserDeleteRows="False">
+                <DataGrid x:Name="dgServers" Margin="0" CellEditEnding="dgServers_CellEditEnding" SelectionMode="Single" CanUserAddRows="False" AutoGenerateColumns="False" RowEditEnding="dgServers_RowEditEnding" BeginningEdit="dgServers_BeginningEdit" CanUserDeleteRows="False" ContextMenuOpening="dgServers_ContextMenuOpening">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Name" Binding="{Binding Path=Name}"/>
                         <DataGridTextColumn Header="Port" Binding="{Binding Path=Port}"/>
@@ -49,13 +55,13 @@
                                     <Image Source="Resources/Add_32x.png"/>
                                 </MenuItem.Icon>
                             </MenuItem>
-                            <Separator></Separator>
+                            <Separator x:Name="serversmenuSep1"></Separator>
                             <MenuItem x:Name="serversMenuRemove" Header="Remove" Click="serversMenuRemove_Click">
                                 <MenuItem.Icon>
                                     <DynamicResource ResourceKey="Remove"/>
                                 </MenuItem.Icon>
                             </MenuItem>
-                            <Separator></Separator>
+                            <Separator x:Name="serversmenuSep2"></Separator>
                             <MenuItem x:Name="serversMenuDetails" Header="Details" Click="serversMenuDetails_Click">
                                 <MenuItem.Icon>
                                     <Image Source="Resources/ListView_32x.png"/>
@@ -66,7 +72,7 @@
                                     <Image Source="Resources/Log_32x.png"/>
                                 </MenuItem.Icon>
                             </MenuItem>
-                            <Separator></Separator>
+                            <Separator x:Name="serversmenuSep3"></Separator>
                             <MenuItem x:Name="serversMenuStart" Header="Start" Click="serversMenuStart_Click">
                                 <MenuItem.Icon>
                                     <DynamicResource ResourceKey="Start"/>
@@ -75,6 +81,15 @@
                             <MenuItem x:Name="serversMenuStop" Header="Stop" Click="serversMenuStop_Click">
                                 <MenuItem.Icon>
                                     <DynamicResource ResourceKey="Stop"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem x:Name="serversMenuWorking" Header="Working..." IsEnabled="False">
+                                <MenuItem.Icon>
+                                    <Image Source="Resources/Refresh_32x.png" RenderTransformOrigin=".5,.5">
+                                        <Image.RenderTransform>
+                                            <RotateTransform x:Name="WorkingRotation"/>
+                                        </Image.RenderTransform>
+                                    </Image>
                                 </MenuItem.Icon>
                             </MenuItem>
                         </ContextMenu>

@@ -58,6 +58,7 @@ namespace ValheimServerWarden
         public event EventHandler<ServerErrorEventArgs> StopFailed;
         public event EventHandler<EventArgs> ScheduledRestart;
         public event EventHandler<ServerExitedEventArgs> Exited;
+        public event EventHandler<EventArgs> Stopping;
         public event EventHandler<ServerExitedEventArgs> ExitedUnexpectedly;
         public event EventHandler<ServerErrorEventArgs> ErrorOccurred;
         public event EventHandler<UpdateCheckEventArgs> CheckedForUpdate;
@@ -706,6 +707,7 @@ namespace ValheimServerWarden
                 if (AttachConsole((uint)this.process.Id))
                 {
                     this.status = ServerStatus.Stopping;
+                    OnStopping(new EventArgs());
                     SetConsoleCtrlHandler(null, true);
                     GenerateConsoleCtrlEvent(ConsoleCtrlEvent.CTRL_C, 0);
                     FreeConsole();
@@ -1002,6 +1004,12 @@ namespace ValheimServerWarden
         private void OnStarting(EventArgs args)
         {
             addToLog("Server starting...");
+            EventHandler<EventArgs> handler = Starting;
+            if (null != handler) handler(this, args);
+        }
+        private void OnStopping(EventArgs args)
+        {
+            addToLog("Server stopping...");
             EventHandler<EventArgs> handler = Starting;
             if (null != handler) handler(this, args);
         }

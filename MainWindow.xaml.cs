@@ -97,7 +97,7 @@ namespace ValheimServerWarden
                 checkForUpdate();
             }
             Console.CancelKeyPress += Console_CancelKeyPress;
-            dgServers.ContextMenuOpening += DgServers_ContextMenuOpening;
+            //dgServers.ContextMenuOpening += dgServers_ContextMenuOpening;
             notifyIcon = new System.Windows.Forms.NotifyIcon();
             notifyIcon.BalloonTipText = "VSW has been minimized. Click the tray icon to restore.";
             notifyIcon.BalloonTipClicked += NotifyIcon_Click;
@@ -106,7 +106,7 @@ namespace ValheimServerWarden
             notifyIcon.MouseClick += NotifyIcon_MouseClick;
             System.Windows.Forms.ContextMenuStrip cm = new System.Windows.Forms.ContextMenuStrip();
             System.Windows.Forms.ToolStripMenuItem menuQuit = new System.Windows.Forms.ToolStripMenuItem();
-            menuQuit.Text = "Exit";
+            menuQuit.Text = "Quit";
             menuQuit.Click += NotifyMenuQuit_Click;
             cm.Items.Add(menuQuit);
             notifyIcon.ContextMenuStrip = cm;
@@ -171,42 +171,93 @@ namespace ValheimServerWarden
             }
         }
 
-        private void DgServers_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+        private void dgServers_ContextMenuOpening(object sender, ContextMenuEventArgs e)
         {
             try
             {
+                ((System.Windows.Media.Animation.Storyboard)FindResource("WorkingStoryboard")).Begin();
+                serversMenuStart.Visibility = Visibility.Collapsed;
+                serversMenuStop.Visibility = Visibility.Collapsed;
+                serversMenuWorking.Visibility = Visibility.Collapsed;
+                serversMenuRemove.Visibility = Visibility.Collapsed;
+                serversMenuDetails.Visibility = Visibility.Collapsed;
+                serversMenuLog.Visibility = Visibility.Collapsed;
+                serversmenuSep1.Visibility = Visibility.Collapsed;
+                serversmenuSep2.Visibility = Visibility.Collapsed;
+                serversmenuSep3.Visibility = Visibility.Collapsed;
                 if (dgServers.SelectedIndex == -1)
                 {
-                    serversMenuStart.IsEnabled = false;
+                    /*serversMenuStart.IsEnabled = false;
                     serversMenuStart.Icon = FindResource("StartGrey");
                     serversMenuStop.IsEnabled = false;
                     serversMenuStop.Icon = FindResource("StopGrey");
                     serversMenuRemove.IsEnabled = false;
                     serversMenuRemove.Icon = FindResource("RemoveGrey");
                     serversMenuDetails.IsEnabled = false;
-                    serversMenuLog.IsEnabled = false;
+                    serversMenuLog.IsEnabled = false;*/
                     return;
                 }
                 ValheimServer server = ((ValheimServer)dgServers.SelectedItem);
-                serversMenuDetails.IsEnabled = true;
-                serversMenuLog.IsEnabled = (File.Exists(server.LogRawName));
-                if (server.Running)
+                //serversMenuDetails.IsEnabled = true;
+                //serversMenuLog.IsEnabled = (File.Exists(server.LogRawName));
+                serversMenuDetails.Visibility = Visibility.Visible;
+                if (File.Exists(server.LogRawName))
                 {
-                    serversMenuStart.IsEnabled = false;
+                    serversMenuLog.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    serversMenuLog.Visibility = Visibility.Collapsed;
+                }
+                serversmenuSep1.Visibility = Visibility.Visible;
+                serversmenuSep2.Visibility = Visibility.Visible;
+                serversmenuSep3.Visibility = Visibility.Visible;
+                if (server.Status == ValheimServer.ServerStatus.Running)
+                {
+                    /*serversMenuStart.IsEnabled = false;
                     serversMenuStart.Icon = FindResource("StartGrey");
                     serversMenuStop.IsEnabled = true;
                     serversMenuStop.Icon = FindResource("Stop");
                     serversMenuRemove.IsEnabled = false;
-                    serversMenuRemove.Icon = FindResource("RemoveGrey");
+                    serversMenuRemove.Icon = FindResource("RemoveGrey");*/
+                    serversMenuStart.Visibility = Visibility.Collapsed;
+                    serversMenuStop.Visibility = Visibility.Visible;
+                    serversMenuRemove.Visibility = Visibility.Collapsed;
+                    serversmenuSep2.Visibility = Visibility.Collapsed;
                 }
-                else
+                else if (server.Status == ValheimServer.ServerStatus.Stopped)
                 {
-                    serversMenuStart.IsEnabled = true;
+                    /*serversMenuStart.IsEnabled = true;
                     serversMenuStart.Icon = FindResource("Start");
                     serversMenuStop.IsEnabled = false;
                     serversMenuStop.Icon = FindResource("StopGrey");
                     serversMenuRemove.IsEnabled = true;
-                    serversMenuRemove.Icon = FindResource("Remove");
+                    serversMenuRemove.Icon = FindResource("Remove");*/
+                    serversMenuStart.Visibility = Visibility.Visible;
+                    serversMenuStop.Visibility = Visibility.Collapsed;
+                    serversMenuRemove.Visibility = Visibility.Visible;
+                    serversmenuSep2.Visibility = Visibility.Visible;
+                    serversmenuSep3.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    serversMenuStart.Visibility = Visibility.Collapsed;
+                    serversMenuStop.Visibility = Visibility.Collapsed;
+                    serversMenuWorking.Visibility = Visibility.Visible;
+                    if (server.Status == ValheimServer.ServerStatus.Starting)
+                    {
+                        serversMenuWorking.Header = "Starting...";
+                    }
+                    else if (server.Status == ValheimServer.ServerStatus.Stopping)
+                    {
+                        serversMenuWorking.Header = "Stopping...";
+                    }
+                    else if (server.Status == ValheimServer.ServerStatus.Updating)
+                    {
+                        serversMenuWorking.Header = "Updating...";
+                    }
+                    serversMenuRemove.Visibility = Visibility.Collapsed;
+                    serversmenuSep2.Visibility = Visibility.Collapsed;
                 }
             }
             catch (Exception ex)
@@ -498,6 +549,7 @@ namespace ValheimServerWarden
                 var server = (ValheimServer)sender;
                 this.Dispatcher.Invoke(() =>
                 {
+                    dgServers.IsReadOnly = false;
                     RefreshDataGrid();
                 });
             }
@@ -592,7 +644,7 @@ namespace ValheimServerWarden
             try
             {
                 ValheimServer server = (ValheimServer)e.Row.Item;
-                if (e.Column.Header.Equals("Name"))
+                /*if (e.Column.Header.Equals("Name"))
                 {
                     string newName = ((TextBox)e.EditingElement).Text;
                     foreach (ValheimServer s in servers)
@@ -605,7 +657,7 @@ namespace ValheimServerWarden
                         }
                     }
                 }
-                else if (e.Column.Header.Equals("Password"))
+                else*/ if (e.Column.Header.Equals("Password"))
                 {
                     string newPass = ((TextBox)e.EditingElement).Text;
                     if (newPass.Length == 0)
@@ -640,7 +692,6 @@ namespace ValheimServerWarden
             try
             {
                 editing = false;
-                //RefreshDataGrid();
             }
             catch (Exception ex)
             {
@@ -675,6 +726,8 @@ namespace ValheimServerWarden
                         }
                     }
                 }
+                dgServers.CancelEdit();
+                dgServers.IsReadOnly = true;
                 server.Start();
                 RefreshDataGrid();
             }
@@ -719,6 +772,8 @@ namespace ValheimServerWarden
                 {
                     return;
                 }
+                dgServers.CancelEdit();
+                dgServers.IsReadOnly = true;
                 server.Stop();
                 RefreshDataGrid();
             }
@@ -735,6 +790,7 @@ namespace ValheimServerWarden
                 var server = (ValheimServer)sender;
                 this.Dispatcher.Invoke(() =>
                 {
+                    dgServers.IsReadOnly = false;
                     RefreshDataGrid();
                     if (server.Autostart && e.ExitCode != 0 && e.ExitCode != -1073741510 && !e.IntentionalExit && !server.Running)
                     {
@@ -1127,7 +1183,7 @@ namespace ValheimServerWarden
         private void btnSteamCmdPath_Click(object sender, RoutedEventArgs e)
         {
             var openFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
-            if (txtSteamCmdPath.Text.Length > 0)
+            if (txtSteamCmdPath.Text != "")
             {
                 var filepath = new FileInfo(txtSteamCmdPath.Text).Directory.FullName;
                 if (Directory.Exists(filepath))

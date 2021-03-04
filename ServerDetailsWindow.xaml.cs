@@ -111,16 +111,20 @@ namespace ValheimServerWarden
                         lblStartTime.Content = Server.StartTime.ToString();
                     }
 
-                    btnStop.IsEnabled = false;
-                    btnStart.IsEnabled = false;
+                    /*btnStop.IsEnabled = false;
+                    btnStart.IsEnabled = false;*/
+                    btnStart.Visibility = Visibility.Collapsed;
+                    btnStop.Visibility = Visibility.Collapsed;
+                    btnWorking.Visibility = Visibility.Collapsed;
                     btnConnect.IsEnabled = false;
-                    btnStop.Content = FindResource("StopGrey");
-                    btnStart.Content = FindResource("StartGrey");
+                    //btnStop.Content = FindResource("StopGrey");
+                    //btnStart.Content = FindResource("StartGrey");
                     btnConnect.Content = FindResource("ConnectGrey");
                     if (status == ValheimServer.ServerStatus.Running)
                     {
-                        btnStop.IsEnabled = true;
-                        btnStop.Content = FindResource("Stop");
+                        //btnStop.IsEnabled = true;
+                        //btnStop.Content = FindResource("Stop");
+                        btnStop.Visibility = Visibility.Visible;
                         if (_steamPath != null)
                         {
                             btnConnect.IsEnabled = true;
@@ -130,12 +134,22 @@ namespace ValheimServerWarden
                     }
                     else if (status == ValheimServer.ServerStatus.Stopped)
                     {
-                        btnStart.IsEnabled = true;
-                        btnStart.Content = FindResource("Start");
+                        //btnStart.IsEnabled = true;
+                        //btnStart.Content = FindResource("Start");
+                        btnStart.Visibility = Visibility.Visible;
                         menuSteamCmdUpdate.Visibility = Visibility.Visible;
                     } 
                     else
                     {
+                        btnWorking.Visibility = Visibility.Visible;
+                        if (status == ValheimServer.ServerStatus.Starting)
+                        {
+                            btnWorking.ToolTip = "Starting...";
+                        }
+                        else
+                        {
+                            btnWorking.ToolTip = "Stopping...";
+                        }
                         menuSteamCmdUpdate.Visibility = Visibility.Collapsed;
                     }
                     btnLog.IsEnabled = (File.Exists(Server.LogRawName));
@@ -187,6 +201,10 @@ namespace ValheimServerWarden
                 RefreshControls();
             });
             Server.Starting += ((object sender, EventArgs e) =>
+            {
+                RefreshControls();
+            });
+            Server.Stopping += ((object sender, EventArgs e) =>
             {
                 RefreshControls();
             });
@@ -300,8 +318,8 @@ namespace ValheimServerWarden
 
         private void btnStart_Click(object sender, RoutedEventArgs e)
         {
-            btnStart.IsEnabled = false;
-            btnStart.Content = FindResource("StartGrey");
+            //btnStart.IsEnabled = false;
+            //btnStart.Content = FindResource("StartGrey");
             OnStarting(new ServerEventArgs(this.Server));
         }
         private void OnStarting(ServerEventArgs args)
@@ -327,8 +345,8 @@ namespace ValheimServerWarden
 
         private void btnStop_Click(object sender, RoutedEventArgs e)
         {
-            btnStop.IsEnabled = false;
-            btnStop.Content = FindResource("StopGrey");
+            //btnStop.IsEnabled = false;
+            //btnStop.Content = FindResource("StopGrey");
             OnStopping(new ServerEventArgs(this.Server));
         }
 
@@ -560,7 +578,7 @@ namespace ValheimServerWarden
         private void btnServerDir_Click(object sender, RoutedEventArgs e)
         {
             var openFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
-            if (txtServerDir.Text != null)
+            if (txtServerDir.Text != "")
             {
                 var serverpath = new FileInfo(txtServerDir.Text).Directory.FullName;
                 if (Directory.Exists(serverpath))

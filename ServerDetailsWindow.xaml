@@ -28,14 +28,14 @@
         <Grid Grid.Row="0">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="50"/>
-                    <ColumnDefinition Width="50"/>
-                    <ColumnDefinition Width="50"/>
-                    <ColumnDefinition Width="50"/>
-                    <ColumnDefinition Width="50"/>
-                    <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition/>
-                    <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <Button x:Name="btnStart" Margin="5" Click="btnStart_Click" ToolTip="Start server" Grid.Column="0">
                     <Button.Content>
@@ -47,12 +47,33 @@
                         <DynamicResource ResourceKey="Stop"/>
                     </Button.Content>
                 </Button>
-                <Button x:Name="btnLog" Margin="5" ToolTip="View detailed log" Click="btnLog_Click" Grid.Column="2">
+                <Button x:Name="btnWorking" Margin="5" ToolTip="Working..." Grid.Column="2">
+                    <Button.Content>
+                        <Image Source="Resources\Refresh_32x.png" RenderTransformOrigin=".5,.5">
+                            <Image.RenderTransform>
+                                <RotateTransform x:Name="WorkingRotation" Angle="0"/>
+                            </Image.RenderTransform>
+                        </Image>
+                    </Button.Content>
+                    <Button.Triggers>
+                        <EventTrigger RoutedEvent="Loaded">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation
+                                        Storyboard.TargetName="WorkingRotation"
+                                        Storyboard.TargetProperty="(RotateTransform.Angle)"
+                                        From="0.0" To="360" Duration="0:0:1" RepeatBehavior="Forever" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                    </Button.Triggers>
+                </Button>
+                <Button x:Name="btnLog" Margin="5" ToolTip="View detailed log" Click="btnLog_Click" Grid.Column="3">
                     <Button.Content>
                         <Image Source="Resources\Log_32x.png"/>
                     </Button.Content>
                 </Button>
-                <Button x:Name="btnConnect" Margin="5" ToolTip="Connect to server" Grid.Column="3" Click="btnConnect_Click">
+                <Button x:Name="btnConnect" Margin="5" ToolTip="Connect to server" Grid.Column="4" Click="btnConnect_Click">
                     <Button.Content>
                         <DynamicResource ResourceKey="Connect"/>
                     </Button.Content>
@@ -71,12 +92,12 @@
                         </ContextMenu>
                     </Button.ContextMenu>
                 </Button>
-                <Button x:Name="btnDiscordWebhook" ToolTip="Set Discord webhook to report server events" Width="Auto" Margin="5" VerticalAlignment="Top" Grid.Column="4" Click="btnDiscordWebhook_Click">
+                <Button x:Name="btnDiscordWebhook" ToolTip="Set Discord webhook to report server events" Width="Auto" Margin="5" VerticalAlignment="Top" Grid.Column="5" Click="btnDiscordWebhook_Click">
                     <Button.Content>
                         <Image Source="Resources/Discord_32x.png"/>
                     </Button.Content>
                 </Button>
-                <Button x:Name="btnSteamCmd" ToolTip="SteamCMD options" Width="Auto" Margin="5" VerticalAlignment="Top" Grid.Column="5" Click="btnSteamCmd_Click" >
+                <Button x:Name="btnSteamCmd" ToolTip="SteamCMD options" Width="Auto" Margin="5" VerticalAlignment="Top" Grid.Column="6" Click="btnSteamCmd_Click" >
                     <Button.Content>
                         <Image Source="Resources/Console_32x.png"/>
                     </Button.Content>
