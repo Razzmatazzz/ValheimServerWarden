@@ -32,7 +32,7 @@ namespace ValheimServerWarden
         {
             InitializeComponent();
             _server = server;
-            this.Title = $"{server.GetLogName()} (does not update live)";
+            this.Title = $"{server.LogRawName} (does not update live)";
             LoadLogText();
         }
 
@@ -40,10 +40,10 @@ namespace ValheimServerWarden
         {
             try
             {
-                if (File.Exists(_server.GetLogName()))
+                if (File.Exists(_server.LogRawName))
                 {
                     txtLog.Document.Blocks.Clear();
-                    Run run = new Run(File.ReadAllText(_server.GetLogName()));
+                    Run run = new Run(File.ReadAllText(_server.LogRawName));
                     Paragraph paragraph = new Paragraph(run);
                     paragraph.Margin = new Thickness(0);
                     txtLog.Document.Blocks.Add(paragraph);

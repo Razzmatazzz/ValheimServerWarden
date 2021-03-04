@@ -87,6 +87,7 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
@@ -120,7 +121,8 @@
                     </Border>
                     <CheckBox x:Name="chkAutoCheckUpdate" Content="Automatically check for update" Margin="10,5,0,5" VerticalAlignment="Center" Grid.Row="2" Checked="chkAutoCheckUpdate_Click" Unchecked="chkAutoCheckUpdate_Click"/>
                     <Button x:Name="btnUpdateCheck" Content="Check Now" Margin="251,5,0,5" VerticalAlignment="Center" Click="btnUpdateCheck_Click" Grid.Row="2"/>
-                    <Label x:Name="lblReportBug" Content="Found a bug? Report it on GitHub." Margin="10" Cursor="Hand" Grid.Row="4" MouseLeftButtonUp="lblReportBug_MouseLeftButtonUp"/>
+                    <CheckBox x:Name="chkLog" Content="Create log file" Margin="10,5" Grid.Row="3" Checked="chkLog_Checked" Unchecked="chkLog_Checked"/>
+                    <Label x:Name="lblReportBug" Content="Found a bug? Report it on GitHub." Margin="10" Cursor="Hand" Grid.Row="5" MouseLeftButtonUp="lblReportBug_MouseLeftButtonUp"/>
                 </Grid>
             </TabItem>
             <TabItem Header="Log">

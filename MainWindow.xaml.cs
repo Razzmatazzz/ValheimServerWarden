@@ -75,6 +75,11 @@ namespace ValheimServerWarden
                 radThemeLight.IsChecked = true;
                 radThemeLight_Checked(null, null);
             }
+
+            if (Properties.Settings.Default.WriteAppLog)
+            {
+                System.IO.File.WriteAllText("vswlog.txt", "");
+            }
             txtLog.Document.Blocks.Clear();
             logMessage($"Version {typeof(MainWindow).Assembly.GetName().Version}");
             CheckServerPath();
@@ -86,6 +91,7 @@ namespace ValheimServerWarden
             }
             cmbServerType.SelectedIndex = Properties.Settings.Default.ServerInstallType;
             chkAutoCheckUpdate.IsChecked = Properties.Settings.Default.AutoCheckUpdate;
+            chkLog.IsChecked = Properties.Settings.Default.WriteAppLog;
             if (Properties.Settings.Default.AutoCheckUpdate)
             {
                 checkForUpdate();
@@ -183,7 +189,7 @@ namespace ValheimServerWarden
                 }
                 ValheimServer server = ((ValheimServer)dgServers.SelectedItem);
                 serversMenuDetails.IsEnabled = true;
-                serversMenuLog.IsEnabled = (File.Exists(server.GetLogName()));
+                serversMenuLog.IsEnabled = (File.Exists(server.LogRawName));
                 if (server.Running)
                 {
                     serversMenuStart.IsEnabled = false;
@@ -303,14 +309,14 @@ namespace ValheimServerWarden
         }
         private void btnServerPath_Click(object sender, RoutedEventArgs e)
         {
-            var serverpath = "";
-            if (txtServerPath.Text != "") {
-                serverpath = new FileInfo(txtServerPath.Text).Directory.FullName;
-            }
             var openFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
-            if (Directory.Exists(serverpath))
+            if (txtServerPath.Text != "")
             {
-                openFolderDialog.SelectedPath = serverpath;
+                var serverpath = new FileInfo(txtServerPath.Text).Directory.FullName;
+                if (Directory.Exists(serverpath))
+                {
+                    openFolderDialog.SelectedPath = serverpath;
+                }
             }
             openFolderDialog.UseDescriptionForTitle = true;
             openFolderDialog.Description = "Default server installation folder";
@@ -318,14 +324,14 @@ namespace ValheimServerWarden
             if (result == System.Windows.Forms.DialogResult.OK)
             {
                 var folderName = openFolderDialog.SelectedPath;
-                if (folderName.Equals(serverpath))
+                /*if (folderName+ "\\valheim_server.exe" == txtServerPath.Text)
                 {
                     return;
-                }
+                }*/
                 if (!File.Exists($@"{folderName}\valheim_server.exe") && cmbServerType.SelectedIndex == (int)ValheimServer.ServerInstallMethod.SteamCMD && File.Exists(Properties.Settings.Default.SteamCMDPath))
                 {
                     var mmb = new ModernMessageBox(this);
-                    var install = mmb.Show("valheim_server.exe was not found in this folder, do you want to install it via SteamCMD?",
+                    var install = mmb.Show($"valheim_server.exe was not found in {folderName}, do you want to install it via SteamCMD?",
                                      "Install Valheim dedicated server?", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
                     if (install == MessageBoxResult.Yes)
                     {
@@ -656,8 +662,8 @@ namespace ValheimServerWarden
                 {
                     if (s.Running)
                     {
-                        IEnumerable<int> range = Enumerable.Range(s.Port, 3);
-                        if (range.Contains(server.Port) || range.Contains(server.Port + 1) || range.Contains(server.Port + 2))
+                        IEnumerable<int> range = Enumerable.Range(s.Port, 2);
+                        if (range.Contains(server.Port) || range.Contains(server.Port + 1))
                         {
                             logMessage($"Server {s.Name} is already running on conflicting port {s.Port}.", LogEntryType.Error);
                             return;
@@ -786,12 +792,12 @@ namespace ValheimServerWarden
                     }
                 }
             });
-            /*if (Properties.Settings.Default.CreateLogFile)
+            if (Properties.Settings.Default.WriteAppLog)
             {
-                StreamWriter writer = System.IO.File.AppendText("log.txt");
-                writer.WriteLine(DateTime.Now.ToString() + ": " + msg);
+                StreamWriter writer = System.IO.File.AppendText("vswlog.txt");
+                writer.WriteLine(entry.TimeStamp+": " +entry.Message);
                 writer.Close();
-            }*/
+            }
         }
 
         private void Window_StateChanged(object sender, EventArgs e)
@@ -1087,7 +1093,7 @@ namespace ValheimServerWarden
             {
                 ValheimServer server = ((ValheimServer)dgServers.SelectedItem);
                 if (server == null) return;
-                if (File.Exists(server.GetLogName()))
+                if (File.Exists(server.LogRawName))
                 {
                     ShowServerLog(server);
                 }
@@ -1135,14 +1141,14 @@ namespace ValheimServerWarden
             if (result == System.Windows.Forms.DialogResult.OK)
             {
                 var folderName = openFolderDialog.SelectedPath;
-                if (folderName.Equals(txtSteamCmdPath.Text))
+                /*if (folderName.Equals(txtSteamCmdPath.Text))
                 {
                     return;
-                }
+                }*/
                 if (!File.Exists($@"{folderName}\steamcmd.exe"))
                 {
                     var mmb = new ModernMessageBox(this);
-                    var install = mmb.Show("steamcmd.exe was not found in this folder, do you want to install it?",
+                    var install = mmb.Show($"steamcmd.exe was not found in {folderName}, do you want to install it?",
                                      "Install SteamCMD?", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
                     if (install == MessageBoxResult.Yes)
                     {
@@ -1209,6 +1215,17 @@ namespace ValheimServerWarden
         {
             txtLog.Document.Blocks.Clear();
             logEntries.Clear();
+        }
+
+        private void chkLog_Checked(object sender, RoutedEventArgs e)
+        {
+            bool newValue = chkLog.IsChecked.HasValue ? chkLog.IsChecked.Value : false;
+            if (newValue & !Properties.Settings.Default.WriteAppLog)
+            {
+                System.IO.File.WriteAllText("vswlog.txt", DateTime.Now.ToString() + ": Version " + typeof(MainWindow).Assembly.GetName().Version + "\r\n");
+            }
+            Properties.Settings.Default.WriteAppLog = newValue;
+            Properties.Settings.Default.Save();
         }
     }
 }

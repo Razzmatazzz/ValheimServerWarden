@@ -98,7 +98,7 @@
             </Grid>
         </Grid>
         <TabControl x:Name="tabsServer" Grid.Row="1">
-            <TabItem Header="Status" Background="White">
+            <TabItem Header="Status">
                 <Grid x:Name="gridStatus" Height="Auto">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition/>

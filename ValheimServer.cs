@@ -402,18 +402,24 @@ namespace ValheimServerWarden
         {
 
         }
-        public string GetLogName()
+        public string LogRawName
         {
-            string logname = this.DisplayName.Replace(" ", "_");
-            logname = Regex.Replace(logname, @"[<]", "[");
-            logname = Regex.Replace(logname, @"[>]", "]");
-            foreach (var c in Path.GetInvalidFileNameChars()) { logname = logname.Replace(c, '-'); }
-            //Regex rgx = new Regex("[^a-zA-Z0-9_-]");
-            //logname = rgx.Replace(logname, "");
-            //return $"{logname}-{this.startTime.ToString("yyyy-MM-dd_HH-mm-ss")}.log";
-            return $"{logname}-{this.Port}-{this.World}.log";
+            get
+            {
+                return LogName.Replace(".log", "-raw.log");
+            }
         }
-
+        public string LogName
+        {
+            get
+            {
+                string logname = this.DisplayName.Replace(" ", "_");
+                logname = Regex.Replace(logname, @"[<]", "[");
+                logname = Regex.Replace(logname, @"[>]", "]");
+                foreach (var c in Path.GetInvalidFileNameChars()) { logname = logname.Replace(c, '-'); }
+                return $"{logname}-{this.Port}-{this.World}.log";
+            }
+        }
         public double GetMilisecondsUntilRestart()
         {
             DateTime restartTime = this.startTime.AddHours(this.RestartHours);
@@ -483,7 +489,7 @@ namespace ValheimServerWarden
             {
                 try
                 {
-                    StreamWriter writer = System.IO.File.AppendText(this.GetLogName());
+                    StreamWriter writer = System.IO.File.AppendText(LogRawName);
                     writer.WriteLine(msg);
                     writer.Close();
                 }
@@ -658,7 +664,7 @@ namespace ValheimServerWarden
             {
                 if (this.RawLog)
                 {
-                    System.IO.File.WriteAllText(this.GetLogName(),"");
+                    System.IO.File.WriteAllText(LogRawName,"");
                 }
                 this.startTime = DateTime.Now;
                 if (this.RestartHours > 0)

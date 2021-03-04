@@ -15,6 +15,7 @@ namespace RazzTools
         public static Color NormalColor { get; set; } = Color.FromArgb(System.Drawing.SystemColors.WindowText.A, System.Drawing.SystemColors.WindowText.R, System.Drawing.SystemColors.WindowText.G, System.Drawing.SystemColors.WindowText.B);
         public static Color SuccessColor { get; set; } = Color.FromRgb(50, 175, 50);
         public static Color ErrorColor { get; set; } = Color.FromRgb(175, 50, 50);
+        public static Color WarningColor { get; set; } = Color.FromRgb(255, 170, 0);
         private string message;
         private LogEntryType logMessageType;
         private DateTime timeStamp;
@@ -52,6 +53,10 @@ namespace RazzTools
                 else if (Type == LogEntryType.Error)
                 {
                     return ErrorColor;
+                }
+                else if (Type == LogEntryType.Warning)
+                {
+                    return WarningColor;
                 }
                 return NormalColor;
             }
@@ -94,7 +99,8 @@ namespace RazzTools
     {
         Normal,
         Success,
-        Error
+        Error,
+        Warning
     }
     public class LoggedMessageEventArgs : EventArgs
     {

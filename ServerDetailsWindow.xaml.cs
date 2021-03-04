@@ -138,8 +138,8 @@ namespace ValheimServerWarden
                     {
                         menuSteamCmdUpdate.Visibility = Visibility.Collapsed;
                     }
-                    btnLog.IsEnabled = (File.Exists(Server.GetLogName()));
-                    btnLog.Visibility = (File.Exists(Server.GetLogName())) ? Visibility.Visible : Visibility.Hidden;
+                    btnLog.IsEnabled = (File.Exists(Server.LogRawName));
+                    btnLog.Visibility = (File.Exists(Server.LogRawName)) ? Visibility.Visible : Visibility.Hidden;
 
                     if (Properties.Settings.Default.SteamCMDPath != null && Properties.Settings.Default.SteamCMDPath.Length > 0 && File.Exists(Properties.Settings.Default.SteamCMDPath) && Server.InstallMethod == ValheimServer.ServerInstallMethod.SteamCMD)
                     {
@@ -215,7 +215,14 @@ namespace ValheimServerWarden
                 txtPassword.Text = Server.Password;
                 txtSaveDir.Text = Server.SaveDir;
                 chkPublic.IsChecked = Server.Public;
-                txtServerDir.Text = Server.InstallPath;
+                if (Server.InstallPath != null)
+                {
+                    txtServerDir.Text = Server.InstallPath;
+                }
+                else if (Properties.Settings.Default.ServerFilePath != null)
+                {
+                    txtServerDir.Text = Properties.Settings.Default.ServerFilePath;
+                }
                 cmbServerType.SelectedIndex = (int)Server.InstallMethod;
                 chkAutostart.IsChecked = Server.Autostart;
                 chkRawLog.IsChecked = Server.RawLog;
@@ -552,11 +559,14 @@ namespace ValheimServerWarden
 
         private void btnServerDir_Click(object sender, RoutedEventArgs e)
         {
-            var serverpath = new FileInfo(txtServerDir.Text).Directory.FullName;
             var openFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
-            if (Directory.Exists(serverpath))
+            if (txtServerDir.Text != null)
             {
-                openFolderDialog.SelectedPath = serverpath;
+                var serverpath = new FileInfo(txtServerDir.Text).Directory.FullName;
+                if (Directory.Exists(serverpath))
+                {
+                    openFolderDialog.SelectedPath = serverpath;
+                }
             }
             openFolderDialog.UseDescriptionForTitle = true;
             openFolderDialog.Description = "Server installation folder";
@@ -564,10 +574,10 @@ namespace ValheimServerWarden
             if (result == System.Windows.Forms.DialogResult.OK)
             {
                 var folderName = openFolderDialog.SelectedPath;
-                if (folderName.Equals(serverpath))
+                /*if (folderName.Equals(serverpath))
                 {
                     return;
-                }
+                }*/
                 if (!File.Exists($@"{folderName}\valheim_server.exe") && cmbServerType.SelectedIndex == (int)ValheimServer.ServerInstallMethod.SteamCMD && File.Exists(Properties.Settings.Default.SteamCMDPath))
                 {
                     var mmb = new ModernMessageBox(this);

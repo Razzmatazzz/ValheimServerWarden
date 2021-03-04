@@ -130,5 +130,17 @@ namespace ValheimServerWarden.Properties {
                 this["MainWindowHeight"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool WriteAppLog {
+            get {
+                return ((bool)(this["WriteAppLog"]));
+            }
+            set {
+                this["WriteAppLog"] = value;
+            }
+        }
     }
 }
