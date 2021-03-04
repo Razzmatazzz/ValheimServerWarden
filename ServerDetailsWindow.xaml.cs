@@ -152,8 +152,8 @@ namespace ValheimServerWarden
                         }
                         menuSteamCmdUpdate.Visibility = Visibility.Collapsed;
                     }
-                    btnLog.IsEnabled = (File.Exists(Server.LogRawName));
-                    btnLog.Visibility = (File.Exists(Server.LogRawName)) ? Visibility.Visible : Visibility.Hidden;
+                    //btnLog.IsEnabled = (File.Exists(Server.LogRawName));
+                    btnLog.Visibility = (File.Exists(Server.LogRawName)) ? Visibility.Visible : Visibility.Collapsed;
 
                     if (Properties.Settings.Default.SteamCMDPath != null && Properties.Settings.Default.SteamCMDPath.Length > 0 && File.Exists(Properties.Settings.Default.SteamCMDPath) && Server.InstallMethod == ValheimServer.ServerInstallMethod.SteamCMD)
                     {
