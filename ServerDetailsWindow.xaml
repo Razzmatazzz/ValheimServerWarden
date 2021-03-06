@@ -244,15 +244,20 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition/>
                                 <RowDefinition/>
+                                <RowDefinition/>
                             </Grid.RowDefinitions>
                             <Grid Grid.Row="0">
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <CheckBox x:Name="chkAutostart" Content="Autostart" Margin="5,5,0,5" VerticalAlignment="Top" Grid.Column="0" ToolTip="Start server automatically on app start"/>
                                 <CheckBox x:Name="chkRawLog" Content="Log raw server output to file" Margin="0,5,15,5" VerticalAlignment="Top" Grid.Column="1"/>
+                                <ComboBox x:Name="cmbPriority" ToolTip="Use extreme care when specifying High for the process's priority class, because a high priority class application can use nearly all available processor time." Margin="0,5,5,5" VerticalAlignment="Center" Grid.Column="2"/>
+                                <Label Content="Process priority" ToolTip="The priority for the server process" Margin="5" VerticalAlignment="Center" Grid.Column="3"/>
                             </Grid>
                             <Grid Grid.Row="1">
                                 <Grid.ColumnDefinitions>
@@ -265,6 +270,17 @@
                                 <TextBox x:Name="txtRestartInterval" HorizontalAlignment="Left" Margin="0,5,0,5" TextWrapping="Wrap" VerticalAlignment="Center" Grid.Column="1" Width="58" IsEnabled="False"/>
                                 <Label Content="hours" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Center" Grid.Column="2"/>
                                 <CheckBox x:Name="chkUpdateOnRestart" Content="Update on restart" Margin="15,5,0,5" VerticalAlignment="Center" Grid.Column="3" ToolTip="Check for and apply available server updates when restarting"/>
+                            </Grid>
+                            <Grid Grid.Row="2" x:Name="gridAutoUpdate">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <CheckBox x:Name="chkAutoUpdate" Content="Check for and apply available updates every " Margin="5,5,0,5" VerticalAlignment="Center" Grid.Column="0" ToolTip="Automatically check for and apply updates if there are no players connected" Checked="chkAutoUpdate_Checked" Unchecked="chkAutoUpdate_Checked"/>
+                                <TextBox x:Name="txtUpdateCheckInterval" HorizontalAlignment="Left" Margin="0,5,0,5" TextWrapping="Wrap" VerticalAlignment="Center" Grid.Column="1" Width="58" IsEnabled="False"/>
+                                <Label Content="minutes" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Center" Grid.Column="2"/>
                             </Grid>
                         </Grid>
                     </Border>

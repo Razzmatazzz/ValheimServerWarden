@@ -27,8 +27,8 @@ namespace ValheimServerWarden
     /// </summary>
     public partial class ServerDetailsWindow : Window
     {
-        public event EventHandler<ServerEventArgs> Starting;
-        public event EventHandler<ServerEventArgs> Stopping;
+        //public event EventHandler<ServerEventArgs> Starting;
+        //public event EventHandler<ServerEventArgs> Stopping;
         public event EventHandler<ServerEventArgs> EditedServer;
         public event EventHandler<ServerEventArgs> ShowLog;
         private ValheimServer _server;
@@ -88,6 +88,9 @@ namespace ValheimServerWarden
                     txtServerLog.Document.Blocks.Add((Paragraph)entry);
                 }
             }
+            cmbPriority.Items.Add(ProcessPriorityClass.Normal);
+            cmbPriority.Items.Add(ProcessPriorityClass.AboveNormal);
+            cmbPriority.Items.Add(ProcessPriorityClass.High);
         }
 
         public void RefreshControls()
@@ -159,11 +162,13 @@ namespace ValheimServerWarden
                     {
                         btnSteamCmd.Visibility = Visibility.Visible;
                         chkUpdateOnRestart.Visibility = Visibility.Visible;
+                        gridAutoUpdate.Visibility = Visibility.Visible;
                     }
                     else
                     {
                         btnSteamCmd.Visibility = Visibility.Collapsed;
                         chkUpdateOnRestart.Visibility = Visibility.Collapsed;
+                        gridAutoUpdate.Visibility = Visibility.Collapsed;
                     }
                 }
                 catch (Exception ex)
@@ -171,6 +176,22 @@ namespace ValheimServerWarden
                     LogMessage($"Error refreshing controls: {ex.Message}", LogEntryType.Error);
                 }
             });
+        }
+        private void RefreshControls(object sender, EventArgs e)
+        {
+            RefreshControls();
+        }
+        private void RefreshControls(object sender, ServerStoppedEventArgs e)
+        {
+            RefreshControls();
+        }
+        private void RefreshControls(object sender, PlayerEventArgs e)
+        {
+            RefreshControls();
+        }
+        private void RefreshControls(object sender, ServerErrorEventArgs e)
+        {
+            RefreshControls();
         }
         private void attachServerEventHandlers()
         {
@@ -180,42 +201,16 @@ namespace ValheimServerWarden
                     LogMessage(e.LogEntry);
                 });
             });
-            Server.Exited += ((object sender, ServerExitedEventArgs e) =>
-            {
-                RefreshControls();
-            });
-            Server.PlayerConnected += ((object sender, PlayerEventArgs e) =>
-            {
-                RefreshControls();
-            });
-            Server.PlayerDisconnected += ((object sender, PlayerEventArgs e) =>
-            {
-                RefreshControls();
-            });
-            Server.PlayerDied += ((object sender, PlayerEventArgs e) =>
-            {
-                RefreshControls();
-            });
-            Server.FailedPassword += ((object sender, FailedPasswordEventArgs e) =>
-            {
-                RefreshControls();
-            });
-            Server.Starting += ((object sender, EventArgs e) =>
-            {
-                RefreshControls();
-            });
-            Server.Stopping += ((object sender, EventArgs e) =>
-            {
-                RefreshControls();
-            });
-            Server.Started += ((object sender, EventArgs e) =>
-            {
-                RefreshControls();
-            });
-            Server.StartFailed += ((object sender, ServerErrorEventArgs e) =>
-            {
-                RefreshControls();
-            });
+            Server.Stopped += RefreshControls;
+            Server.PlayerConnected += RefreshControls;
+            Server.PlayerDisconnected += RefreshControls;
+            Server.PlayerDied += RefreshControls;
+            Server.FailedPassword += RefreshControls;
+            Server.Starting += RefreshControls;
+            Server.Stopping += RefreshControls;
+            Server.Started += RefreshControls;
+            Server.StartFailed += RefreshControls;
+            Server.StopFailed += RefreshControls;
             Server.Updated += ((object sender, UpdatedEventArgs e) =>
             {
                 RefreshControls();
@@ -257,6 +252,13 @@ namespace ValheimServerWarden
                     txtRestartInterval.IsEnabled = false;
                 }
                 chkUpdateOnRestart.IsChecked = Server.UpdateOnRestart;
+                if (Server.UpdateCheckMinutes > 0)
+                {
+                    chkAutoUpdate.IsChecked = true;
+                    txtUpdateCheckInterval.Text = Server.UpdateCheckMinutes.ToString();
+                    txtUpdateCheckInterval.IsEnabled = true;
+                }
+                cmbPriority.SelectedItem = Server.ProcessPriority;
             }
             catch (Exception ex)
             {
@@ -320,9 +322,10 @@ namespace ValheimServerWarden
         {
             //btnStart.IsEnabled = false;
             //btnStart.Content = FindResource("StartGrey");
-            OnStarting(new ServerEventArgs(this.Server));
+            //OnStarting(new ServerEventArgs(this.Server));
+            Server.Start();
         }
-        private void OnStarting(ServerEventArgs args)
+        /*private void OnStarting(ServerEventArgs args)
         {
             EventHandler<ServerEventArgs> handler = Starting;
             if (null != handler) handler(this, args);
@@ -331,7 +334,7 @@ namespace ValheimServerWarden
         {
             EventHandler<ServerEventArgs> handler = Stopping;
             if (null != handler) handler(this, args);
-        }
+        }*/
         private void OnShowLog(ServerEventArgs args)
         {
             EventHandler<ServerEventArgs> handler = ShowLog;
@@ -347,7 +350,8 @@ namespace ValheimServerWarden
         {
             //btnStop.IsEnabled = false;
             //btnStop.Content = FindResource("StopGrey");
-            OnStopping(new ServerEventArgs(this.Server));
+            //OnStopping(new ServerEventArgs(this.Server));
+            Server.Stop();
         }
 
         private void btnLog_Click(object sender, RoutedEventArgs e)
@@ -408,6 +412,7 @@ namespace ValheimServerWarden
             Server.InstallMethod = (ValheimServer.ServerInstallMethod)cmbServerType.SelectedIndex;
             Server.Autostart = chkAutostart.IsChecked.GetValueOrDefault();
             Server.RawLog = chkRawLog.IsChecked.GetValueOrDefault();
+            Server.ProcessPriority = (ProcessPriorityClass)cmbPriority.SelectedItem;
             int restartHours = Server.RestartHours;
             if (chkAutoRestart.IsChecked.GetValueOrDefault())
             {
@@ -427,6 +432,24 @@ namespace ValheimServerWarden
                 chkAutoRestart.IsChecked = false;
             }
             Server.UpdateOnRestart = chkUpdateOnRestart.IsChecked.GetValueOrDefault();
+            int updateCheckMinutes = Server.UpdateCheckMinutes;
+            if (chkAutoUpdate.IsChecked.GetValueOrDefault())
+            {
+                int.TryParse(txtUpdateCheckInterval.Text, out updateCheckMinutes);
+            }
+            else
+            {
+                updateCheckMinutes = 0;
+            }
+            if (updateCheckMinutes > -1)
+            {
+                Server.UpdateCheckMinutes = updateCheckMinutes;
+            }
+            if (updateCheckMinutes == 0)
+            {
+                txtUpdateCheckInterval.Text = "";
+                chkAutoUpdate.IsChecked = false;
+            }
             OnEditedServer(new ServerEventArgs(this.Server));
             RefreshControls();
             if (Server.Running)
@@ -508,6 +531,10 @@ namespace ValheimServerWarden
         private void chkAutoRestart_Checked(object sender, RoutedEventArgs e)
         {
             txtRestartInterval.IsEnabled = chkAutoRestart.IsChecked.GetValueOrDefault();
+            if (chkAutoRestart.IsChecked.GetValueOrDefault() && txtRestartInterval.Text == "")
+            {
+                txtRestartInterval.Text = "4";
+            }
         }
 
         private void btnDiscordWebhook_Click(object sender, RoutedEventArgs e)
@@ -596,10 +623,10 @@ namespace ValheimServerWarden
                 {
                     return;
                 }*/
-                if (!File.Exists($@"{folderName}\valheim_server.exe") && cmbServerType.SelectedIndex == (int)ValheimServer.ServerInstallMethod.SteamCMD && File.Exists(Properties.Settings.Default.SteamCMDPath))
+                if (!File.Exists($@"{folderName}\{ValheimServer.ExecutableName}") && cmbServerType.SelectedIndex == (int)ValheimServer.ServerInstallMethod.SteamCMD && File.Exists(Properties.Settings.Default.SteamCMDPath))
                 {
                     var mmb = new ModernMessageBox(this);
-                    var install = mmb.Show("valheim_server.exe was not found in this folder, do you want to install it via SteamCMD?",
+                    var install = mmb.Show($"{ValheimServer.ExecutableName} was not found in this folder, do you want to install it via SteamCMD?",
                                      "Install Valheim dedicated server?", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
                     if (install == MessageBoxResult.Yes)
                     {
@@ -619,7 +646,7 @@ namespace ValheimServerWarden
                         }
                     }
                 }
-                folderName += "\\valheim_server.exe";
+                folderName += $@"\{ValheimServer.ExecutableName}";
                 txtServerDir.Text = folderName;
             }
             RefreshControls();
@@ -756,6 +783,15 @@ namespace ValheimServerWarden
         private void menuSteamCmdCheckUpdate_Click(object sender, RoutedEventArgs e)
         {
             Server.CheckForUpdate();
+        }
+
+        private void chkAutoUpdate_Checked(object sender, RoutedEventArgs e)
+        {
+            txtUpdateCheckInterval.IsEnabled = chkAutoUpdate.IsChecked.GetValueOrDefault();
+            if (chkAutoUpdate.IsChecked.GetValueOrDefault() && txtUpdateCheckInterval.Text == "")
+            {
+                txtUpdateCheckInterval.Text = "20";
+            }
         }
     }
 

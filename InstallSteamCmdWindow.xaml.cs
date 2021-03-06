@@ -126,7 +126,7 @@ namespace ValheimServerWarden
 
         private void btnInstallServer_Click(object sender, RoutedEventArgs e)
         {
-            if (!File.Exists(txtServerPath.Text+"\\valheim_server.exe"))
+            if (!File.Exists($@"{txtServerPath.Text}\{ValheimServer.ExecutableName}"))
             {
                 btnInstallServer.IsEnabled = false;
                 txtServerPath.MouseLeftButtonUp -= txtServerPath_MouseLeftButtonUp;
@@ -142,7 +142,7 @@ namespace ValheimServerWarden
             else
             {
                 Properties.Settings.Default.ServerInstallType = (int)ValheimServer.ServerInstallMethod.SteamCMD;
-                Properties.Settings.Default.ServerFilePath = txtServerPath.Text + "\\valheim_server.exe";
+                Properties.Settings.Default.ServerFilePath = txtServerPath.Text + $@"\{ValheimServer.ExecutableName}";
                 Properties.Settings.Default.SteamCMDPath = txtSteamCMDPath.Text;
                 Properties.Settings.Default.Save();
                 DialogResult = true;
@@ -154,10 +154,10 @@ namespace ValheimServerWarden
         {
             this.Dispatcher.Invoke(() =>
             {
-                if (File.Exists(txtServerPath.Text + "\\valheim_server.exe"))
+                if (File.Exists($@"{txtServerPath.Text}\{ValheimServer.ExecutableName}"))
                 {
                     Properties.Settings.Default.ServerInstallType = (int)ValheimServer.ServerInstallMethod.SteamCMD;
-                    Properties.Settings.Default.ServerFilePath = txtServerPath.Text + "\\valheim_server.exe";
+                    Properties.Settings.Default.ServerFilePath = $@"{txtServerPath.Text}\{ValheimServer.ExecutableName}";
                     Properties.Settings.Default.SteamCMDPath = txtSteamCMDPath.Text;
                     Properties.Settings.Default.Save();
                     DialogResult = true;

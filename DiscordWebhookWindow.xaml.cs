@@ -32,24 +32,24 @@ namespace ValheimServerWarden
 
             txtWebhook.Text = _server.DiscordWebhook;
 
-            ContextMenu contextMenu = new ContextMenu();
-            MenuItem defaultMenu = new MenuItem();
+            var contextMenu = new ContextMenu();
+            var defaultMenu = new MenuItem();
             contextMenu.Items.Add(defaultMenu);
             defaultMenu.Header = "Reset to default";
             defaultMenu.Click += DefaultMenu_Click;
 
-            messageControls = new List<TextBox>();
-            messageControls.Add(OnPlayerConnected);
-            messageControls.Add(OnPlayerDisconnected);
-            messageControls.Add(OnPlayerDied);
-            messageControls.Add(OnFailedPassword);
-            messageControls.Add(OnRandomServerEvent);
-            messageControls.Add(OnStarted);
-            messageControls.Add(OnStartFailed);
-            messageControls.Add(OnServerExited);
-            foreach (TextBox textBox in messageControls)
+            messageControls = new();
+            messageControls.Add(txtOnPlayerConnected);
+            messageControls.Add(txtOnPlayerDisconnected);
+            messageControls.Add(txtOnPlayerDied);
+            messageControls.Add(txtOnFailedPassword);
+            messageControls.Add(txtOnRandomServerEvent);
+            messageControls.Add(txtOnStarted);
+            messageControls.Add(txtOnStartFailed);
+            messageControls.Add(txtOnServerExited);
+            foreach (var textBox in messageControls)
             {
-                textBox.Text = server.GetWebhookMessage(textBox.Name);
+                textBox.Text = server.GetWebhookMessage(textBox.Tag.ToString());
                 textBox.ContextMenu = contextMenu;
                 textBox.ContextMenuOpening += TextBox_ContextMenuOpening;
             }
@@ -62,66 +62,36 @@ namespace ValheimServerWarden
 
         private void DefaultMenu_Click(object sender, RoutedEventArgs e)
         {
-            clickedTextBox.Text = _server.DefaultWebhookMessages[clickedTextBox.Name];
-        }
-
-        private void btnTestConnected_Click(object sender, RoutedEventArgs e)
-        {
-            _server.SendDiscordWebhook(OnPlayerConnected.Name, new Player("Bjorn", "123456789101112"));
-        }
-
-        private void btnTestDisconnected_Click(object sender, RoutedEventArgs e)
-        {
-            _server.SendDiscordWebhook(OnPlayerDisconnected.Name, new Player("Bjorn", "123456789101112"));
-        }
-
-        private void btnTestDied_Click(object sender, RoutedEventArgs e)
-        {
-            _server.SendDiscordWebhook(OnPlayerDied.Name, new Player("Bjorn", "123456789101112"));
-        }
-
-        private void btnFailedPassword_Click(object sender, RoutedEventArgs e)
-        {
-            _server.SendDiscordWebhook(OnFailedPassword.Name, new Player("Bjorn", "123456789101112"));
-        }
-
-        private void btnRandomServerEvent_Click(object sender, RoutedEventArgs e)
-        {
-            _server.SendDiscordWebhook(OnRandomServerEvent.Name, null, "army_bonemass");
+            clickedTextBox.Text = ValheimServer.DiscordWebhookDefaultMessages[clickedTextBox.Tag.ToString()];
         }
 
         private void btnSave_Click(object sender, RoutedEventArgs e)
         {
             _server.DiscordWebhook = txtWebhook.Text;
-            foreach (TextBox textBox in messageControls)
+            foreach (var textBox in messageControls)
             {
-                if (textBox.Text != null && _server.DefaultWebhookMessages.ContainsKey(textBox.Name) && textBox.Text != this._server.DefaultWebhookMessages[textBox.Name])
+                var webHookName = textBox.Tag.ToString();
+                if (textBox.Text != null && ValheimServer.DiscordWebhookDefaultMessages.ContainsKey(webHookName) && textBox.Text != ValheimServer.DiscordWebhookDefaultMessages[webHookName])
                 {
-                    _server.DiscordWebhookMessages[textBox.Name] = textBox.Text;
+                    _server.DiscordWebhookMessages[webHookName] = textBox.Text;
                 }
-                else if (_server.DefaultWebhookMessages.ContainsKey(textBox.Name) && textBox.Text == this._server.DefaultWebhookMessages[textBox.Name])
+                else if (ValheimServer.DiscordWebhookDefaultMessages.ContainsKey(webHookName) && textBox.Text == ValheimServer.DiscordWebhookDefaultMessages[webHookName])
                 {
-                    if (_server.DiscordWebhookMessages.ContainsKey(textBox.Name))
+                    if (_server.DiscordWebhookMessages.ContainsKey(webHookName))
                     {
-                        _server.DiscordWebhookMessages.Remove(textBox.Name);
+                        _server.DiscordWebhookMessages.Remove(webHookName);
                     }
                 }
             }
             DialogResult = true;
             Close();
         }
-
-        private void btnTestServerStarted_Click(object sender, RoutedEventArgs e)
+        private void btnTestWebhook_Click(object sender, RoutedEventArgs e)
         {
-            _server.SendDiscordWebhook(OnStarted.Name, null, null);
-        }
-        private void btnTestServerStartFailed_Click(object sender, RoutedEventArgs e)
-        {
-            _server.SendDiscordWebhook(OnStartFailed.Name, null, null);
-        }
-        private void btnTestServerStopped_Click(object sender, RoutedEventArgs e)
-        {
-            _server.SendDiscordWebhook(OnStarted.Name, null, null);
+            var oldUrl = _server.DiscordWebhook;
+            _server.DiscordWebhook = txtWebhook.Text;
+            _server.SendDiscordWebhook(((Button)sender).Tag.ToString(), new Player("Bjorn", "123456789101112"), "army_bonemass");
+            _server.DiscordWebhook = oldUrl;
         }
 
         private void btnCancel_Click(object sender, RoutedEventArgs e)

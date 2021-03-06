@@ -32,7 +32,7 @@ namespace ValheimServerWarden
     /// </summary>
     public partial class MainWindow : Window
     {
-        private List<ValheimServer> servers;
+        //private List<ValheimServer> servers;
         private bool suppressLog = false;
         private bool editing = false;
         private System.Windows.Forms.NotifyIcon notifyIcon;
@@ -112,7 +112,7 @@ namespace ValheimServerWarden
             notifyIcon.ContextMenuStrip = cm;
             storedWindowState = WindowState.Normal;
 
-            servers = new List<ValheimServer>();
+            //servers = new List<ValheimServer>();
             if (File.Exists(this.ServerJsonPath))
             {
                 try
@@ -121,10 +121,10 @@ namespace ValheimServerWarden
                     foreach (ValheimServer s in savedServers)
                     {
                         attachServerEventListeners(s);
-                        servers.Add(s);
+                        //servers.Add(s);
                         if (s.Autostart)
                         {
-                            StartServer(s);
+                            s.Start();
                         }
                     }
                 }
@@ -133,14 +133,14 @@ namespace ValheimServerWarden
                     logMessage($"Error reading saved servers: {ex.Message}", LogEntryType.Error);
                 }
             }
-            dgServers.ItemsSource = servers;
+            dgServers.ItemsSource = ValheimServer.Servers;//servers;
             RefreshDataGrid();
             checkForRunningServers();
         }
 
         private void NotifyMenuQuit_Click(object sender, EventArgs e)
         {
-            foreach (var server in servers)
+            foreach (var server in ValheimServer.Servers)
             {
                 if (server.Running)
                 {
@@ -281,7 +281,7 @@ namespace ValheimServerWarden
                     logMessage("Valid path for Valheim dedicated server not set.");
                     string steampath = @"Program Files (x86)\Steam\steam.exe";
                     string fullSteamPath = "";
-                    string filePath = @"Program Files (x86)\Steam\steamapps\common\Valheim dedicated server\valheim_server.exe";
+                    string filePath = $@"Program Files (x86)\Steam\steamapps\common\Valheim dedicated server\{ValheimServer.ExecutableName}";
                     bool serverfound = false;
                     DriveInfo[] drives = DriveInfo.GetDrives();
                     foreach (DriveInfo drive in drives)
@@ -379,10 +379,10 @@ namespace ValheimServerWarden
                 {
                     return;
                 }*/
-                if (!File.Exists($@"{folderName}\valheim_server.exe") && cmbServerType.SelectedIndex == (int)ValheimServer.ServerInstallMethod.SteamCMD && File.Exists(Properties.Settings.Default.SteamCMDPath))
+                if (!File.Exists($@"{folderName}\{ValheimServer.ExecutableName}") && cmbServerType.SelectedIndex == (int)ValheimServer.ServerInstallMethod.SteamCMD && File.Exists(Properties.Settings.Default.SteamCMDPath))
                 {
                     var mmb = new ModernMessageBox(this);
-                    var install = mmb.Show($"valheim_server.exe was not found in {folderName}, do you want to install it via SteamCMD?",
+                    var install = mmb.Show($"{ValheimServer.ExecutableName} was not found in {folderName}, do you want to install it via SteamCMD?",
                                      "Install Valheim dedicated server?", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
                     if (install == MessageBoxResult.Yes)
                     {
@@ -402,7 +402,7 @@ namespace ValheimServerWarden
                         }
                     }
                 }
-                folderName += "\\valheim_server.exe";
+                folderName += $@"\{ValheimServer.ExecutableName}";
                 txtServerPath.Text = folderName;
                 Properties.Settings.Default.ServerFilePath = folderName;
                 Properties.Settings.Default.Save();
@@ -456,7 +456,7 @@ namespace ValheimServerWarden
             SaveServers();
             notifyIcon.Dispose();
             notifyIcon = null;
-            foreach (ValheimServer server in servers)
+            foreach (ValheimServer server in ValheimServer.Servers)
             {
                 if (server.Status == ValheimServer.ServerStatus.Running || server.Status == ValheimServer.ServerStatus.Starting)
                 {
@@ -477,7 +477,7 @@ namespace ValheimServerWarden
         {
             try
             {
-                File.WriteAllTextAsync(this.ServerJsonPath, JsonSerializer.Serialize(servers));
+                File.WriteAllTextAsync(this.ServerJsonPath, JsonSerializer.Serialize(ValheimServer.Servers));
             }
             catch (Exception ex)
             {
@@ -497,9 +497,11 @@ namespace ValheimServerWarden
                         logMessage(server.DisplayName+": "+e.LogEntry.Message, e.LogEntry.Type);
                     });
                 });
-                server.Exited += Server_Exited;
+                server.Stopped += Server_Stopped;
                 server.Started += Server_Started;
+                server.Starting += Server_StartingStopping;
                 server.StartFailed += Server_StartFailed;
+                server.Stopping += Server_StartingStopping;
                 server.StopFailed += Server_StopFailed;
                 server.PlayerConnected += Server_PlayerConnected;
                 server.PlayerDisconnected += Server_PlayerDisconnected;
@@ -509,7 +511,15 @@ namespace ValheimServerWarden
                 logMessage($"Error attaching event listeners: {ex.Message}", LogEntryType.Error);
             }
         }
-
+        private void Server_StartingStopping(object sender, EventArgs e)
+        {
+            this.Dispatcher.Invoke(() =>
+            {
+                dgServers.CancelEdit();
+                dgServers.IsReadOnly = true;
+                RefreshDataGrid();
+            });
+        }
         private void Server_StopFailed(object sender, ServerErrorEventArgs e)
         {
             try
@@ -517,6 +527,7 @@ namespace ValheimServerWarden
                 var server = (ValheimServer)sender;
                 this.Dispatcher.Invoke(() =>
                 {
+                    dgServers.IsReadOnly = false;
                     RefreshDataGrid();
                 });
             }
@@ -533,6 +544,7 @@ namespace ValheimServerWarden
                 var server = (ValheimServer)sender;
                 this.Dispatcher.Invoke(() =>
                 {
+                    dgServers.IsReadOnly = false;
                     RefreshDataGrid();
                 });
             }
@@ -596,7 +608,7 @@ namespace ValheimServerWarden
                 ValheimServer s = new ValheimServer();
                 s.InstallMethod = (ValheimServer.ServerInstallMethod)Properties.Settings.Default.ServerInstallType;
                 attachServerEventListeners(s);
-                servers.Add(s);
+                //servers.Add(s);
                 RefreshDataGrid();
                 dgServers.SelectedItem = s;
                 dgServers.BeginEdit();
@@ -618,11 +630,11 @@ namespace ValheimServerWarden
             base.OnClosing(e);*/
             try
             {
-                foreach (ValheimServer server in servers)
+                foreach (ValheimServer server in ValheimServer.Servers)
                 {
                     if (server.Running)
                     {
-                        logMessage($"Server {server.Name} is still running. Please stop all servers before exiting.", LogEntryType.Error);
+                        logMessage($"Server {server.DisplayName} is still running. Please stop all servers before exiting.", LogEntryType.Error);
                         e.Cancel = true;
                     }
                     else
@@ -699,50 +711,12 @@ namespace ValheimServerWarden
             }
         }
 
-        private void StartServer(ValheimServer server)
-        {
-            try
-            {
-                if (server == null) return;
-                if (server.Running)
-                {
-                    logMessage($"Server {server.Name} is alread running.", LogEntryType.Error);
-                    return;
-                }
-                foreach (ValheimServer s in servers)
-                {
-                    if (s.Running)
-                    {
-                        IEnumerable<int> range = Enumerable.Range(s.Port, 2);
-                        if (range.Contains(server.Port) || range.Contains(server.Port + 1))
-                        {
-                            logMessage($"Server {s.Name} is already running on conflicting port {s.Port}.", LogEntryType.Error);
-                            return;
-                        }
-                        if (s.World.Equals(server.World))
-                        {
-                            logMessage($"Server {s.Name} is already running using world {s.World}.", LogEntryType.Error);
-                            return;
-                        }
-                    }
-                }
-                dgServers.CancelEdit();
-                dgServers.IsReadOnly = true;
-                server.Start();
-                RefreshDataGrid();
-            }
-            catch (Exception ex)
-            {
-                logMessage($"Error starting server: {ex.Message}", LogEntryType.Error);
-            }
-        }
-
         private void serversMenuStart_Click(object sender, RoutedEventArgs e)
         {
             try
             {
                 ValheimServer server = ((ValheimServer)dgServers.SelectedItem);
-                StartServer(server);
+                server.Start();
             }
             catch (Exception ex)
             {
@@ -755,27 +729,7 @@ namespace ValheimServerWarden
             try
             {
                 ValheimServer server = ((ValheimServer)dgServers.SelectedItem);
-                StopServer(server);
-            }
-            catch (Exception ex)
-            {
-                logMessage($"Error stopping server: {ex.Message}", LogEntryType.Error);
-            }
-        }
-
-        private void StopServer(ValheimServer server)
-        {
-            try
-            {
-                if (server == null) return;
-                if (!server.Running)
-                {
-                    return;
-                }
-                dgServers.CancelEdit();
-                dgServers.IsReadOnly = true;
                 server.Stop();
-                RefreshDataGrid();
             }
             catch (Exception ex)
             {
@@ -783,7 +737,7 @@ namespace ValheimServerWarden
             }
         }
 
-        private void Server_Exited(object sender, ServerExitedEventArgs e)
+        private void Server_Stopped(object sender, ServerStoppedEventArgs e)
         {
             try
             {
@@ -792,10 +746,6 @@ namespace ValheimServerWarden
                 {
                     dgServers.IsReadOnly = false;
                     RefreshDataGrid();
-                    if (server.Autostart && e.ExitCode != 0 && e.ExitCode != -1073741510 && !e.IntentionalExit && !server.Running)
-                    {
-                        server.Start();
-                    }
                 });
             }
             catch (Exception ex)
@@ -878,19 +828,6 @@ namespace ValheimServerWarden
                 storedWindowState = WindowState;
             }
         }
-
-        private void menuEditPreferences_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                tabsMain.SelectedIndex = 1;
-            }
-            catch (Exception ex)
-            {
-                logMessage($"Error opening preferences: {ex.Message}", LogEntryType.Error);
-            }
-        }
-
         private void dgServers_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
         {
             editing = true;
@@ -919,21 +856,16 @@ namespace ValheimServerWarden
         {
             ValheimServer server = (ValheimServer)dgServers.SelectedItem;
             var mmb = new ModernMessageBox(this);
-            var confirmResult = mmb.Show($"Are you sure you want to remove {server.Name}?",
+            var confirmResult = mmb.Show($"Are you sure you want to remove {server.DisplayName}?",
                                      "Remove Server", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
             if (confirmResult == MessageBoxResult.Yes)
             {
 
-                servers.Remove(server);
+                //servers.Remove(server);
+                server.Dispose();
                 RefreshDataGrid();
             }
         }
-
-        private void menuFileExit_Click(object sender, RoutedEventArgs e)
-        {
-            this.Close();
-        }
-
         private void radThemeDark_Checked(object sender, RoutedEventArgs e)
         {
             if (!Properties.Settings.Default.AppTheme.Equals("Dark"))
@@ -1091,14 +1023,6 @@ namespace ValheimServerWarden
                 {
                     this.serverDetailWindows.Remove(window);
                 });
-                window.Starting += ((object sender, ServerEventArgs e) =>
-                {
-                    this.StartServer(e.Server);
-                });
-                window.Stopping += ((object sender, ServerEventArgs e) =>
-                {
-                    this.StopServer(e.Server);
-                });
                 window.ShowLog += ((object sender, ServerEventArgs e) =>
                 {
                     ShowServerLog(e.Server);
@@ -1139,7 +1063,7 @@ namespace ValheimServerWarden
             }
             catch (Exception ex)
             {
-                logMessage($"Error showing {server.Name} server log: {ex.Message}", LogEntryType.Error);
+                logMessage($"Error showing {server.DisplayName} server log: {ex.Message}", LogEntryType.Error);
             }
         }
 
