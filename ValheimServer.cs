@@ -38,7 +38,7 @@ namespace ValheimServerWarden
         public static Dictionary<string, string> DiscordWebhookDefaultMessages { get; } = new Dictionary<string, string> {
             {"OnStarted", "Server {Server.Name} has started." },
             {"OnStartFailed", "Server {Server.Name} failed to start." },
-            {"OnServerExited", "Server {Server.Name} has stopped." },
+            {"OnStopped", "Server {Server.Name} has stopped." },
             {"OnFailedPassword", "User with SteamID {Player.SteamID} tried to join with an invalid password." },
             {"OnPlayerConnected", "{Player.Name} has entered the fray!" },
             {"OnPlayerDisconnected", "{Player.Name} has departed." },
@@ -731,7 +731,7 @@ namespace ValheimServerWarden
                 OnStartFailed(new ServerErrorEventArgs($"Server cannot start because {ValheimServer.ExecutableName} was not found at the server executable path ({serverpath}). Please update the server executable path."));
                 return;
             }
-            string arguments = $"-nographics -batchmode -name \"{this.Name}\" -port {this.Port} -world \"{this.World}\"";
+            string arguments = $"-nographics -batchmode -name \"{this.Name}\" -port {this.Port} -world \"{this.World}\" -public {Convert.ToInt32(Public)}";
             if (Password != null & Password.Length > 0)
             {
                 arguments += $" -password \"{this.Password}\"";
@@ -739,10 +739,6 @@ namespace ValheimServerWarden
             if (!saveDir.Equals(DefaultSaveDir))
             {
                 arguments += $" -savedir \"{this.SaveDir}\"";
-            }
-            if (Public)
-            {
-                arguments += $" -public 1";
             }
             if (testMode)
             {
@@ -866,7 +862,7 @@ namespace ValheimServerWarden
             }
             else
             {
-                OnServerStopped(new ServerStoppedEventArgs(this.process.ExitCode, this.intentionalExit));
+                OnStopped(new ServerStoppedEventArgs(this.process.ExitCode, this.intentionalExit));
                 if (scheduledRestart)
                 {
                     if (this.UpdateOnRestart && this.InstallMethod == ServerInstallMethod.SteamCMD)
@@ -1067,7 +1063,7 @@ namespace ValheimServerWarden
             EventHandler<PlayerEventArgs> handler = PlayerDied;
             if (null != handler) handler(this, args);
         }
-        private void OnServerStopped(ServerStoppedEventArgs args)
+        private void OnStopped(ServerStoppedEventArgs args)
         {
             try
             {
@@ -1181,7 +1177,7 @@ namespace ValheimServerWarden
                 }
                 else
                 {
-                    addToLog($"No server update available.");
+                    //addToLog($"No server update available.");
                 }
             }
             else
@@ -1234,7 +1230,7 @@ namespace ValheimServerWarden
             {
                 new Thread(() =>
                 {
-                    addToLog($"Checking for server update...");
+                    //addToLog($"Checking for server update...");
                     if (!File.Exists(Properties.Settings.Default.SteamCMDPath))
                     {
                         OnCheckedForUpdate(new UpdateCheckEventArgs($"SteamCMD was not found at {Properties.Settings.Default.SteamCMDPath}."));
