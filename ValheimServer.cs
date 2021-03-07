@@ -30,7 +30,8 @@ namespace ValheimServerWarden
         {
             Manual,
             Steam,
-            SteamCMD
+            SteamCMD,
+            uMod
         }
         public static List<ValheimServer> Servers { get; } = new List<ValheimServer>();
         public static string DefaultSaveDir { get { return $@"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}\AppData\LocalLow\IronGate\Valheim"; } }
@@ -370,7 +371,27 @@ namespace ValheimServerWarden
                 }
             }
         }
-        public ValheimServer(string name, int port, string world, string password, bool pubserver, bool autostart, bool rawlog, int restarthours, bool updateonrestart, int updatecheckminutes, string discordwebhook, Dictionary<string,string> discordmessages, ServerInstallMethod install, string instpath, ProcessPriorityClass processpriority)
+        [JsonIgnore]
+        public string LogRawName
+        {
+            get
+            {
+                return LogName.Replace(".log", "-raw.log");
+            }
+        }
+        [JsonIgnore]
+        public string LogName
+        {
+            get
+            {
+                string logname = this.DisplayName.Replace(" ", "_");
+                logname = Regex.Replace(logname, @"[<]", "[");
+                logname = Regex.Replace(logname, @"[>]", "]");
+                foreach (var c in Path.GetInvalidFileNameChars()) { logname = logname.Replace(c, '-'); }
+                return $"{logname}-{this.Port}-{this.World}.log";
+            }
+        }
+        public ValheimServer(string name, int port, string world, string password, bool pubserver, bool autostart, bool rawlog, int restarthours, bool updateonrestart, int updatecheckminutes, string discordwebhook, Dictionary<string,string> discordmessages, ServerInstallMethod install, string instpath, ProcessPriorityClass processpriority, bool umodupdating)
         {
             this.data.name = name;
             this.data.port = 2456;
@@ -422,8 +443,11 @@ namespace ValheimServerWarden
 
         private void UpdateTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
-            CheckedForUpdate += ValheimServer_ScheduledCheckedForUpdate;
-            this.CheckForUpdate();
+            if (InstallMethod != ServerInstallMethod.uMod)
+            {
+                CheckedForUpdate += ValheimServer_ScheduledCheckedForUpdate;
+                this.CheckForUpdate();
+            }
         }
 
         private void ValheimServer_ScheduledCheckedForUpdate(object sender, UpdateCheckEventArgs e)
@@ -459,31 +483,13 @@ namespace ValheimServerWarden
             }
         }
 
-        public ValheimServer() : this("My Server", 2456, "Dedicated", "Secret", false, false, false, 0, false, 0, null, new Dictionary<string,string>(), ServerInstallMethod.Manual, Properties.Settings.Default.ServerFilePath, ProcessPriorityClass.Normal)
+        public ValheimServer() : this("My Server", 2456, "Dedicated", "Secret", false, false, false, 0, false, 0, null, new Dictionary<string,string>(), ServerInstallMethod.Manual, Properties.Settings.Default.ServerFilePath, ProcessPriorityClass.Normal, false)
         {
         }
 
-        public ValheimServer(string name) : this(name, 2456, "Dedicated", "Secret", false, false, false, 0, false, 0, null, new Dictionary<string,string>(), ServerInstallMethod.Manual, Properties.Settings.Default.ServerFilePath, ProcessPriorityClass.Normal)
+        public ValheimServer(string name) : this(name, 2456, "Dedicated", "Secret", false, false, false, 0, false, 0, null, new Dictionary<string,string>(), ServerInstallMethod.Manual, Properties.Settings.Default.ServerFilePath, ProcessPriorityClass.Normal, false)
         {
 
-        }
-        public string LogRawName
-        {
-            get
-            {
-                return LogName.Replace(".log", "-raw.log");
-            }
-        }
-        public string LogName
-        {
-            get
-            {
-                string logname = this.DisplayName.Replace(" ", "_");
-                logname = Regex.Replace(logname, @"[<]", "[");
-                logname = Regex.Replace(logname, @"[>]", "]");
-                foreach (var c in Path.GetInvalidFileNameChars()) { logname = logname.Replace(c, '-'); }
-                return $"{logname}-{this.Port}-{this.World}.log";
-            }
         }
         public double GetMilisecondsUntilRestart()
         {
@@ -1173,7 +1179,10 @@ namespace ValheimServerWarden
             {
                 if (args.UpdateAvailable)
                 {
-                    addToLog($"Server update available.", LogEntryType.Success);
+                    if (InstallMethod == ServerInstallMethod.SteamCMD)
+                    {
+                        addToLog($"Server update available.", LogEntryType.Success);
+                    }
                 }
                 else
                 {
@@ -1189,6 +1198,7 @@ namespace ValheimServerWarden
         }
         private void OnUpdateEnded(UpdateEndedEventArgs args)
         {
+            status = ServerStatus.Stopped;
             if (args.Updated)
             {
                 addToLog("Update complete.", LogEntryType.Success);
@@ -1230,70 +1240,77 @@ namespace ValheimServerWarden
             {
                 new Thread(() =>
                 {
-                    //addToLog($"Checking for server update...");
-                    if (!File.Exists(Properties.Settings.Default.SteamCMDPath))
+                    if (InstallMethod == ServerInstallMethod.SteamCMD)
                     {
-                        OnCheckedForUpdate(new UpdateCheckEventArgs($"SteamCMD was not found at {Properties.Settings.Default.SteamCMDPath}."));
-                        return;
-                    }
-                    var process = new Process();
-                    process.StartInfo.FileName = Properties.Settings.Default.SteamCMDPath;
-                    process.StartInfo.Arguments = $"+login anonymous +app_info_update 1 +app_info_print {ValheimServer.SteamID} +quit";
-                    process.StartInfo.CreateNoWindow = true;
-                    process.EnableRaisingEvents = true;
-                    process.StartInfo.RedirectStandardOutput = true;
-                    //process.Exited += SteamCmdProcess_Exited;
-
-                    process.Exited += ((object sender, EventArgs e) =>
-                    {
-                        var process = (Process)sender;
-                        var output = process.StandardOutput.ReadToEnd();
-                        output = output.Substring(output.IndexOf("\"depots\""));
-                        output = output.Substring(output.IndexOf("\"branches\""));
-                        output = output.Substring(output.IndexOf("\"public\""));
-                        output = output.Substring(0, output.IndexOf("}"));
-                        Regex rx = new Regex("\"buildid\"\\s+\"(\\d+)\"", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-                        Match match = rx.Match(output);
-                        if (match.Success)
+                        //addToLog($"Checking for server update...");
+                        if (!File.Exists(Properties.Settings.Default.SteamCMDPath))
                         {
-                            var remoteBuild = Convert.ToInt32(match.Groups[1].ToString());
-                            if (remoteBuild == 0)
+                            OnCheckedForUpdate(new UpdateCheckEventArgs($"SteamCMD was not found at {Properties.Settings.Default.SteamCMDPath}."));
+                            return;
+                        }
+                        var process = new Process();
+                        process.StartInfo.FileName = Properties.Settings.Default.SteamCMDPath;
+                        process.StartInfo.Arguments = $"+login anonymous +app_info_update 1 +app_info_print {ValheimServer.SteamID} +quit";
+                        process.StartInfo.CreateNoWindow = true;
+                        process.EnableRaisingEvents = true;
+                        process.StartInfo.RedirectStandardOutput = true;
+                        //process.Exited += SteamCmdProcess_Exited;
+
+                        process.Exited += ((object sender, EventArgs e) =>
+                        {
+                            var process = (Process)sender;
+                            var output = process.StandardOutput.ReadToEnd();
+                            output = output.Substring(output.IndexOf("\"depots\""));
+                            output = output.Substring(output.IndexOf("\"branches\""));
+                            output = output.Substring(output.IndexOf("\"public\""));
+                            output = output.Substring(0, output.IndexOf("}"));
+                            Regex rx = new Regex("\"buildid\"\\s+\"(\\d+)\"", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                            Match match = rx.Match(output);
+                            if (match.Success)
                             {
-                                OnCheckedForUpdate(new UpdateCheckEventArgs($"Remote buildid {match.Groups[1]} is not a valid number."));
-                                return;
-                            }
-                            var manifestpath = new FileInfo(this.InstallPath).DirectoryName + $@"\steamapps\appmanifest_{ValheimServer.SteamID}.acf";
-                            if (File.Exists(manifestpath))
-                            {
-                                var manifest = File.ReadAllText(manifestpath);
-                                match = rx.Match(manifest);
-                                if (match.Success)
+                                var remoteBuild = Convert.ToInt32(match.Groups[1].ToString());
+                                if (remoteBuild == 0)
                                 {
-                                    var localBuild = Convert.ToInt32(match.Groups[1].ToString());
-                                    if (localBuild == 0)
+                                    OnCheckedForUpdate(new UpdateCheckEventArgs($"Remote buildid {match.Groups[1]} is not a valid number."));
+                                    return;
+                                }
+                                var manifestpath = new FileInfo(this.InstallPath).DirectoryName + $@"\steamapps\appmanifest_{ValheimServer.SteamID}.acf";
+                                if (File.Exists(manifestpath))
+                                {
+                                    var manifest = File.ReadAllText(manifestpath);
+                                    match = rx.Match(manifest);
+                                    if (match.Success)
                                     {
-                                        OnCheckedForUpdate(new UpdateCheckEventArgs($"Local buildid {match.Groups[1]} is not a valid number."));
-                                        return;
+                                        var localBuild = Convert.ToInt32(match.Groups[1].ToString());
+                                        if (localBuild == 0)
+                                        {
+                                            OnCheckedForUpdate(new UpdateCheckEventArgs($"Local buildid {match.Groups[1]} is not a valid number."));
+                                            return;
+                                        }
+                                        OnCheckedForUpdate(new UpdateCheckEventArgs(true, remoteBuild > localBuild));
                                     }
-                                    OnCheckedForUpdate(new UpdateCheckEventArgs(true, remoteBuild > localBuild));
+                                    else
+                                    {
+                                        OnCheckedForUpdate(new UpdateCheckEventArgs($"Could not find local buildid for update check."));
+                                    }
                                 }
                                 else
                                 {
-                                    OnCheckedForUpdate(new UpdateCheckEventArgs($"Could not find local buildid for update check."));
+                                    OnCheckedForUpdate(new UpdateCheckEventArgs($"Could not find {manifestpath} for update check."));
                                 }
                             }
                             else
                             {
-                                OnCheckedForUpdate(new UpdateCheckEventArgs($"Could not find {manifestpath} for update check."));
+                                OnCheckedForUpdate(new UpdateCheckEventArgs($"Could find not remote buildid for update check."));
                             }
-                        }
-                        else
-                        {
-                            OnCheckedForUpdate(new UpdateCheckEventArgs($"Could find not remote buildid for update check."));
-                        }
-                    });
-                    process.Start();
-                    //process.WaitForExit();
+                        });
+                        process.Start();
+                        //process.WaitForExit();
+                    }
+                    else if (InstallMethod == ServerInstallMethod.uMod)
+                    {
+                        OnCheckedForUpdate(new UpdateCheckEventArgs(true, true));
+                    }
                 }).Start();
             }
             catch (Exception ex)
@@ -1305,6 +1322,7 @@ namespace ValheimServerWarden
         {
             if (!this.Running)
             {
+                status = ServerStatus.Updating;
                 foreach (var s in ValheimServer.Servers)
                 {
                     if (s != this && s.Status != ServerStatus.Stopped && s.InstallPath == this.InstallPath)
@@ -1314,46 +1332,79 @@ namespace ValheimServerWarden
                     }
                 }
                 addToLog($"Updating server...");
-                if (!File.Exists(Properties.Settings.Default.SteamCMDPath))
+                if (InstallMethod == ServerInstallMethod.SteamCMD)
                 {
-                    OnUpdateEnded(new UpdateEndedEventArgs($"SteamCMD was not found at {Properties.Settings.Default.SteamCMDPath}."));
-                    return;
+                    if (!File.Exists(Properties.Settings.Default.SteamCMDPath))
+                    {
+                        OnUpdateEnded(new UpdateEndedEventArgs($"SteamCMD was not found at {Properties.Settings.Default.SteamCMDPath}."));
+                        return;
+                    }
+                    var process = new Process();
+                    process.StartInfo.FileName = Properties.Settings.Default.SteamCMDPath;
+                    process.StartInfo.Arguments = $"+login anonymous +force_install_dir \"{(new FileInfo(this.InstallPath).Directory.FullName)}\" +app_update {ValheimServer.SteamID} +quit";
+                    process.StartInfo.CreateNoWindow = true;
+                    process.EnableRaisingEvents = true;
+                    process.StartInfo.RedirectStandardOutput = true;
+                    process.Exited += ((object sender, EventArgs e) =>
+                    {
+                        var process = (Process)sender;
+                        var output = process.StandardOutput.ReadToEnd();
+                        //Debug.Write(output);
+                        Regex rx = new Regex($"App '{SteamID}' already up to date.", RegexOptions.Compiled);
+                        Match match = rx.Match(output);
+                        if (match.Success)
+                        {
+                            OnUpdateEnded(new UpdateEndedEventArgs(UpdateEndedEventArgs.UpdateResults.AlreadyUpToDate));
+                            return;
+                        }
+                        rx = new Regex($"App '{SteamID}' fully installed.", RegexOptions.Compiled);
+                        match = rx.Match(output);
+                        if (match.Success)
+                        {
+                            OnUpdateEnded(new UpdateEndedEventArgs(UpdateEndedEventArgs.UpdateResults.Updated));
+                            return;
+                        }
+                        OnUpdateEnded(new UpdateEndedEventArgs("Update probably failed. Unrecognized output from SteamCMD."));
+                    });
+                    process.Start();
+                    //process.WaitForExit();
                 }
-                var process = new Process();
-                process.StartInfo.FileName = Properties.Settings.Default.SteamCMDPath;
-                process.StartInfo.Arguments = $"+login anonymous +force_install_dir \"{(new FileInfo(this.InstallPath).Directory.FullName)}\" +app_update {ValheimServer.SteamID} +quit";
-                process.StartInfo.CreateNoWindow = true;
-                process.EnableRaisingEvents = true;
-                process.StartInfo.RedirectStandardOutput = true;
-                process.Exited += ((object sender, EventArgs e) =>
+                else if (InstallMethod == ServerInstallMethod.uMod)
                 {
-                    var process = (Process)sender;
-                    var output = process.StandardOutput.ReadToEnd();
-                    //Debug.Write(output);
-                    Regex rx = new Regex($"App '{SteamID}' already up to date.", RegexOptions.Compiled);
-                    Match match = rx.Match(output);
-                    if (match.Success)
+                    if (!uMod.Installed)
                     {
-                        OnUpdateEnded(new UpdateEndedEventArgs(UpdateEndedEventArgs.UpdateResults.AlreadyUpToDate));
+                        OnUpdateEnded(new UpdateEndedEventArgs($"uMod does not appear to be installed."));
                         return;
                     }
-                    rx = new Regex($"App '{SteamID}' fully installed.", RegexOptions.Compiled);
-                    match = rx.Match(output);
-                    if (match.Success)
+                    var umod = new uMod(InstallPath, "valheim");
+                    umod.UpdateEnded += ((object sender, uMod.ProcessEndedEventArgs e) =>
                     {
-                        OnUpdateEnded(new UpdateEndedEventArgs(UpdateEndedEventArgs.UpdateResults.Updated));
-                        return;
-                    }
-                    OnUpdateEnded(new UpdateEndedEventArgs("Update probably failed. Unrecognized output from SteamCMD."));
-                });
-                process.Start();
-                //process.WaitForExit();
+                        if (e.ExitCode == 0)
+                        {
+                            OnUpdateEnded(new UpdateEndedEventArgs(UpdateEndedEventArgs.UpdateResults.Updated));
+                        }
+                        else if (e.ExitCode == 1)
+                        {
+                            OnUpdateEnded(new UpdateEndedEventArgs("Unable to update game, uMod core, or uMod apps."));
+                        }
+                        else if (e.ExitCode == 2)
+                        {
+                            OnUpdateEnded(new UpdateEndedEventArgs(UpdateEndedEventArgs.UpdateResults.AlreadyUpToDate));
+                        }
+                        else
+                        {
+                            OnUpdateEnded(new UpdateEndedEventArgs("Update probably failed. Unrecognized output from uMod."));
+                        }
+                    });
+                    umod.Update();
+                }
             }
             else
             {
                 OnUpdateEnded(new UpdateEndedEventArgs("Please stop the server before updating."));
             }
         }
+
         public static void TerminateAll(Process[] servers)
         {
             new Thread(() =>

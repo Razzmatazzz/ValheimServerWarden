@@ -67,7 +67,7 @@
                                     <Image Source="Resources/ListView_32x.png"/>
                                 </MenuItem.Icon>
                             </MenuItem>
-                            <MenuItem x:Name="serversMenuLog" Header="Server Log" Click="serversMenuLog_Click">
+                            <MenuItem x:Name="serversMenuLog" Header="Raw Server Log" Click="serversMenuLog_Click">
                                 <MenuItem.Icon>
                                     <Image Source="Resources/Log_32x.png"/>
                                 </MenuItem.Icon>

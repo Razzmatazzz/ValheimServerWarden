@@ -9,7 +9,37 @@
         ui:WindowHelper.UseModernWindowStyle="True"
         Title="ServerLogWindow" Height="450" Width="800">
     <Grid>
-        <RichTextBox x:Name="txtLog" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+        <RichTextBox x:Name="txtLog" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ContextMenuOpening="txtLog_ContextMenuOpening">
+            <RichTextBox.ContextMenu>
+                <ContextMenu>
+                    <MenuItem x:Name="menuLogSelectAll" Header="Select All" Click="menuLogSelectAll_Click">
+                        <MenuItem.Icon>
+                            <Image Source="Resources/SelectAll_32x.png"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem x:Name="menuLogCopy" Header="Copy" Click="menuLogCopy_Click">
+                        <MenuItem.Icon>
+                            <Image Source="Resources/Copy_32x.png"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator/>
+                    <MenuItem x:Name="menuRefresh" Header="Refresh" Visibility="Collapsed" Click="menuRefresh_Click">
+                        <MenuItem.Icon>
+                            <Image Source="Resources/Refresh_32x.png"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem x:Name="menuStop" Header="Stop automatic refresh" Click="menuStop_Click">
+                        <MenuItem.Icon>
+                            <Image Source="Resources/Stop_32x.png"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem x:Name="menuStart" Header="Start automatic refresh" Visibility="Collapsed" Click="menuStart_Click">
+                        <MenuItem.Icon>
+                            <Image Source="Resources/StartWithoutDebug_32x.png"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                </ContextMenu>
+            </RichTextBox.ContextMenu>
             <FlowDocument>
             </FlowDocument>
         </RichTextBox>

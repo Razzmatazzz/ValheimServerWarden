@@ -46,9 +46,13 @@ namespace ValheimServerWarden
             InitializeComponent();
             this._server = server;
             txtServerLog.Document.Blocks.Clear();
-            foreach (var i in Enum.GetValues(typeof(ValheimServer.ServerInstallMethod)))
+            foreach (var installmethod in Enum.GetValues(typeof(ValheimServer.ServerInstallMethod)))
             {
-                cmbServerType.Items.Add(Enum.GetName(typeof(ValheimServer.ServerInstallMethod), i));
+                cmbServerType.Items.Add(installmethod);
+            }
+            if (!uMod.Installed)
+            {
+                cmbServerType.Items.Remove(ValheimServer.ServerInstallMethod.uMod);
             }
             RefreshControls();
             attachServerEventHandlers();
@@ -123,6 +127,7 @@ namespace ValheimServerWarden
                     //btnStop.Content = FindResource("StopGrey");
                     //btnStart.Content = FindResource("StartGrey");
                     btnConnect.Content = FindResource("ConnectGrey");
+                    btnuModUpdate.IsEnabled = false;
                     if (status == ValheimServer.ServerStatus.Running)
                     {
                         //btnStop.IsEnabled = true;
@@ -141,6 +146,7 @@ namespace ValheimServerWarden
                         //btnStart.Content = FindResource("Start");
                         btnStart.Visibility = Visibility.Visible;
                         menuSteamCmdUpdate.Visibility = Visibility.Visible;
+                        btnuModUpdate.IsEnabled = true;
                     } 
                     else
                     {
@@ -149,9 +155,13 @@ namespace ValheimServerWarden
                         {
                             btnWorking.ToolTip = "Starting...";
                         }
-                        else
+                        else if (status == ValheimServer.ServerStatus.Stopping)
                         {
                             btnWorking.ToolTip = "Stopping...";
+                        }
+                        else if (status == ValheimServer.ServerStatus.Updating)
+                        {
+                            btnWorking.ToolTip = "Updating...";
                         }
                         menuSteamCmdUpdate.Visibility = Visibility.Collapsed;
                     }
@@ -164,11 +174,25 @@ namespace ValheimServerWarden
                         chkUpdateOnRestart.Visibility = Visibility.Visible;
                         gridAutoUpdate.Visibility = Visibility.Visible;
                     }
+                    else if (uMod.Installed && Server.InstallMethod == ValheimServer.ServerInstallMethod.uMod)
+                    {
+                        btnSteamCmd.Visibility = Visibility.Collapsed;
+                        chkUpdateOnRestart.Visibility = Visibility.Visible;
+                        gridAutoUpdate.Visibility = Visibility.Collapsed;
+                    }
                     else
                     {
                         btnSteamCmd.Visibility = Visibility.Collapsed;
                         chkUpdateOnRestart.Visibility = Visibility.Collapsed;
                         gridAutoUpdate.Visibility = Visibility.Collapsed;
+                    }
+                    if (uMod.Installed && Server.InstallMethod == ValheimServer.ServerInstallMethod.uMod)
+                    {
+                        tabuMod.Visibility = Visibility.Visible;
+                    }
+                    else
+                    {
+                        tabuMod.Visibility = Visibility.Collapsed;
                     }
                 }
                 catch (Exception ex)
@@ -410,6 +434,10 @@ namespace ValheimServerWarden
             Server.Public = chkPublic.IsChecked.GetValueOrDefault();
             Server.InstallPath = txtServerDir.Text;
             Server.InstallMethod = (ValheimServer.ServerInstallMethod)cmbServerType.SelectedIndex;
+            if (Server.InstallMethod == ValheimServer.ServerInstallMethod.uMod)
+            {
+                chkAutoUpdate.IsChecked = false;
+            }
             Server.Autostart = chkAutostart.IsChecked.GetValueOrDefault();
             Server.RawLog = chkRawLog.IsChecked.GetValueOrDefault();
             Server.ProcessPriority = (ProcessPriorityClass)cmbPriority.SelectedItem;
@@ -791,6 +819,19 @@ namespace ValheimServerWarden
             if (chkAutoUpdate.IsChecked.GetValueOrDefault() && txtUpdateCheckInterval.Text == "")
             {
                 txtUpdateCheckInterval.Text = "20";
+            }
+        }
+
+        private void btnuModUpdate_Click(object sender, RoutedEventArgs e)
+        {
+            if (Server.Status == ValheimServer.ServerStatus.Stopped)
+            {
+                Server.Update();
+            }
+            else
+            {
+                var mmb = new ModernMessageBox(this);
+                mmb.Show("Stop server before updating.", "Server Running", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }

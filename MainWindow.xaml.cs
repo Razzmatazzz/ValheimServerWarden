@@ -1048,12 +1048,12 @@ namespace ValheimServerWarden
                     if (win.Server == server)
                     {
                         win.WindowState = WindowState.Normal;
-                        win.LoadLogText();
+                        //win.LoadLogText();
                         return;
                     }
                 }
                 ServerLogWindow window = new ServerLogWindow(server);
-                window.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+                window.WindowStartupLocation = WindowStartupLocation.CenterScreen;
                 this.serverLogWindows.Add(window);
                 window.Closed += ((object sender, EventArgs e) =>
                 {
@@ -1188,7 +1188,7 @@ namespace ValheimServerWarden
 
         private void menuLogCopy_Click(object sender, RoutedEventArgs e)
         {
-            txtLog.SelectAll();
+            Clipboard.SetText(txtLog.Selection.Text);
         }
 
         private void menuLogClear_Click(object sender, RoutedEventArgs e)

@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -20,7 +22,13 @@ namespace ValheimServerWarden
     /// </summary>
     public partial class ServerLogWindow : Window
     {
-        ValheimServer _server;
+        private ValheimServer _server;
+        private FileSystemWatcher logWatcher;
+        private DateTime lastRefresh;
+        private Timer refreshTimer;
+        private int refreshInterval;
+        private Timer retryTimer;
+        private int retryInterval;
         public ValheimServer Server
         {
             get
@@ -32,30 +40,122 @@ namespace ValheimServerWarden
         {
             InitializeComponent();
             _server = server;
-            this.Title = $"{server.LogRawName} (does not update live)";
-            LoadLogText();
+            this.Title = $"{server.LogRawName}";
+            RefreshLogText();
+
+            refreshInterval = 1000;
+            refreshTimer = new();
+            refreshTimer.AutoReset = false;
+            refreshTimer.Elapsed += RefreshTimer_Elapsed;
+
+            retryInterval = 4000;
+            retryTimer = new();
+            retryTimer.AutoReset = false;
+            retryTimer.Elapsed += RetryTimer_Elapsed;
+
+            logWatcher = new FileSystemWatcher();
+            // Watch for changes in LastWrite times.
+            logWatcher.NotifyFilter = NotifyFilters.LastWrite;
+            logWatcher.Path = Environment.CurrentDirectory;
+
+            // Only watch .db files.
+            logWatcher.Filter = $"{server.LogRawName}";
+
+            logWatcher.Changed += LogWatcher_Changed;
+            logWatcher.EnableRaisingEvents = true;
         }
 
-        public void LoadLogText()
+        private void RefreshTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            try
+            RefreshLogText();
+        }
+
+        private void RetryTimer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            Debug.WriteLine("timer elapsed");
+            if (lastRefresh.AddMilliseconds(retryInterval) >= DateTime.Now)
             {
-                if (File.Exists(_server.LogRawName))
-                {
-                    txtLog.Document.Blocks.Clear();
-                    Run run = new Run(File.ReadAllText(_server.LogRawName));
-                    Paragraph paragraph = new Paragraph(run);
-                    paragraph.Margin = new Thickness(0);
-                    txtLog.Document.Blocks.Add(paragraph);
-                }
+                Debug.WriteLine($"timer elapsed >= {retryInterval}ms ago");
+                RefreshLogText();
             }
-            catch (IOException ex)
+        }
+
+        private void LogWatcher_Changed(object sender, FileSystemEventArgs e)
+        {
+            refreshTimer.Interval = refreshInterval;
+            refreshTimer.Enabled = true;
+        }
+
+        public void RefreshLogText()
+        {
+            if (_server == null)
             {
-                if (ex.Message.Contains("being used by another process"))
+                this.Close();
+                return;
+            }
+            if (File.Exists(_server.LogRawName))
+            {
+                this.Dispatcher.Invoke(() =>
                 {
-                    System.Threading.Thread.Sleep(500);
-                    LoadLogText();
-                }
+                    try
+                    {
+                        txtLog.Document.Blocks.Clear();
+                        Run run = new Run(File.ReadAllText(_server.LogRawName));
+                        Paragraph paragraph = new Paragraph(run);
+                        paragraph.Margin = new Thickness(0);
+                        txtLog.Document.Blocks.Add(paragraph);
+                        lastRefresh = DateTime.Now;
+                    }
+                    catch (IOException ex)
+                    {
+                        retryTimer.Interval = retryInterval;
+                        retryTimer.Enabled = true;
+                        retryTimer.Start();
+                    }
+                });
+            }
+        }
+
+        private void menuRefresh_Click(object sender, RoutedEventArgs e)
+        {
+            RefreshLogText();
+        }
+
+        private void menuStop_Click(object sender, RoutedEventArgs e)
+        {
+            logWatcher.EnableRaisingEvents = false;
+            menuStop.Visibility = Visibility.Collapsed;
+            menuRefresh.Visibility = Visibility.Visible;
+            menuStart.Visibility = Visibility.Visible;
+        }
+
+        private void menuStart_Click(object sender, RoutedEventArgs e)
+        {
+            logWatcher.EnableRaisingEvents = true;
+            menuStop.Visibility = Visibility.Visible;
+            menuRefresh.Visibility = Visibility.Collapsed;
+            menuStart.Visibility = Visibility.Collapsed;
+        }
+
+        private void menuLogSelectAll_Click(object sender, RoutedEventArgs e)
+        {
+            txtLog.SelectAll();
+        }
+
+        private void menuLogCopy_Click(object sender, RoutedEventArgs e)
+        {
+            Clipboard.SetText(txtLog.Selection.Text);
+        }
+
+        private void txtLog_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+        {
+            if (txtLog.Selection.IsEmpty)
+            {
+                menuLogCopy.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                menuLogCopy.Visibility = Visibility.Visible;
             }
         }
     }

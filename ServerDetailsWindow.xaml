@@ -356,6 +356,23 @@
                     <Button x:Name="btnSavePermittedList" Content="Save" Margin="0,10" HorizontalAlignment="Center" Grid.Row="2" Click="btnSavePermittedList_Click"/>
                 </Grid>
             </TabItem>
+            <TabItem x:Name="tabuMod" Header="uMod">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <Button x:Name="btnuModUpdate" Content="Update" ToolTip="Update server, uMod, apps, and extensions via uMod" Margin="5" Grid.Row="0" Grid.Column="0" Click="btnuModUpdate_Click"/>
+                    <TextBlock TextWrapping="Wrap" Margin="5" Grid.Row="1" Grid.Column="0">
+                        This tab is visible because VSW detected you have uMod installed and you selected uMod for the server install method. uMod support is extremely experimental and may not work at all.<LineBreak/><LineBreak/>
+                        Because uMod does not have a command to check for updates, it is not currently possible to check for updates while a uMod server is running. But if you have the "Update on restart" option selected, 
+                        VSW will attempt to use uMod to update the server on scheduled restarts.
+                    </TextBlock>
+                </Grid>
+            </TabItem>
         </TabControl>
     </Grid>
 </Window>
