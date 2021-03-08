@@ -11,20 +11,25 @@ namespace RazzTools
 {
     class uMod
     {
-        public static bool Installed
+        public static bool AgentInstalled
         {
             get
             {
-                return File.Exists(ExecutablePath);
+                return File.Exists(AgentPath);
             }
         }
-        public static string ExecutablePath
+        public static string AgentPath
         {
             get
             {
+                if (testing)
+                {
+                    return @"C:\Windows\System32\ping.exe";
+                }
                 return $@"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}\.dotnet\tools\umod.exe";
             }
         }
+        private static bool testing = false;
         private string _serverPath;
         private string _gameName;
         public event EventHandler<LoggedMessageEventArgs> LoggedMessage;
@@ -37,28 +42,56 @@ namespace RazzTools
         public bool Prerelease { get; set; }
         public uMod(string serverPath, string gameName)
         {
-            _serverPath = serverPath;
+            if (serverPath.EndsWith(".exe"))
+            {
+                _serverPath = new FileInfo(serverPath).Directory.FullName;
+            }
+            else
+            {
+                _serverPath = serverPath;
+            }
             _gameName = gameName;
             Prerelease = true;
         }
-        public void Install()
+        private Process GetProcess()
+        {
+            return GetProcess(null);
+        }
+        private Process GetProcess(string arguments)
+        {
+            var process = new Process();
+            process.StartInfo.FileName = AgentPath;
+            if (arguments != null && arguments != "")
+            {
+                process.StartInfo.Arguments = arguments;
+            }
+            if (testing)
+            {
+                process.StartInfo.Arguments = "google.com";
+            }
+            process.StartInfo.CreateNoWindow = true;
+            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.RedirectStandardError = true;
+            process.StartInfo.RedirectStandardInput = true;
+            process.EnableRaisingEvents = true;
+            process.OutputDataReceived += Process_OutputDataReceived;
+            return process;
+        }
+        public void Install() { Install(null); }
+        public void Install(string filter)
         {
             new Thread(() =>
             {
                 try
                 {
-                    Thread.CurrentThread.IsBackground = true;
-                    var process = new Process();
-                    process.StartInfo.FileName = ExecutablePath;
-                    process.StartInfo.Arguments = $"install {GameName} --force --strict --no-input";
-                    process.StartInfo.UseShellExecute = false;
-                    process.StartInfo.WorkingDirectory = ServerPath;
-                    process.StartInfo.CreateNoWindow = true;
-                    process.StartInfo.RedirectStandardOutput = true;
-                    process.StartInfo.RedirectStandardError = true;
-                    process.StartInfo.RedirectStandardInput = true;
-                    process.EnableRaisingEvents = true;
-                    process.OutputDataReceived += Process_OutputDataReceived;
+                    if (filter != null)
+                    {
+                        filter = $" --filter=\"{filter}\"";
+                    } else
+                    {
+                        filter = "";
+                    }
+                    var process = GetProcess($"install {GameName}{filter} --strict --no-input --dir=\"{ServerPath}\" -P");
                     process.Exited += InstallProcess_Exited;
                     process.Start();
                     process.BeginOutputReadLine();
@@ -87,18 +120,7 @@ namespace RazzTools
             {
                 try
                 {
-                    Thread.CurrentThread.IsBackground = true;
-                    var process = new Process();
-                    process.StartInfo.FileName = ExecutablePath;
-                    process.StartInfo.Arguments = $"update {updateComponents} --patch-available --strict --validate --prerelease --no-input";
-                    process.StartInfo.UseShellExecute = false;
-                    process.StartInfo.WorkingDirectory = ServerPath;
-                    process.StartInfo.CreateNoWindow = true;
-                    process.StartInfo.RedirectStandardOutput = true;
-                    process.StartInfo.RedirectStandardError = true;
-                    process.StartInfo.RedirectStandardInput = true;
-                    process.EnableRaisingEvents = true;
-                    process.OutputDataReceived += Process_OutputDataReceived;
+                    var process = GetProcess($"update {updateComponents} --patch-available --strict --validate --prerelease --no-input --dir=\"{ServerPath}\"");
                     process.Exited += UpdateProcess_Exited;
                     process.Start();
                     process.BeginOutputReadLine();
@@ -114,6 +136,10 @@ namespace RazzTools
         private void Process_OutputDataReceived(object sender, DataReceivedEventArgs e)
         {
             Debug.WriteLine(e.Data);
+            if (e.Data != null)
+            {
+                //LogMessage(e.Data);
+            }
         }
 
         private void UpdateProcess_Exited(object sender, EventArgs e)
@@ -128,18 +154,7 @@ namespace RazzTools
             {
                 try
                 {
-                    Thread.CurrentThread.IsBackground = true;
-                    var process = new Process();
-                    process.StartInfo.FileName = ExecutablePath;
-                    process.StartInfo.Arguments = $"require {pluginName} --strict --no-input";
-                    process.StartInfo.UseShellExecute = false;
-                    process.StartInfo.WorkingDirectory = ServerPath;
-                    process.StartInfo.CreateNoWindow = true;
-                    process.StartInfo.RedirectStandardOutput = true;
-                    process.StartInfo.RedirectStandardError = true;
-                    process.StartInfo.RedirectStandardInput = true;
-                    process.EnableRaisingEvents = true;
-                    process.OutputDataReceived += Process_OutputDataReceived;
+                    var process = GetProcess($"require {pluginName} --strict --no-input --dir=\"{ServerPath}\"");
                     process.Exited += InstallPluginProcess_Exited;
                     process.Start();
                     process.BeginOutputReadLine();
@@ -163,18 +178,7 @@ namespace RazzTools
             {
                 try
                 {
-                    Thread.CurrentThread.IsBackground = true;
-                    var process = new Process();
-                    process.StartInfo.FileName = ExecutablePath;
-                    process.StartInfo.Arguments = $"remove {pluginName} --strict --no-input";
-                    process.StartInfo.UseShellExecute = false;
-                    process.StartInfo.WorkingDirectory = ServerPath;
-                    process.StartInfo.CreateNoWindow = true;
-                    process.StartInfo.RedirectStandardOutput = true;
-                    process.StartInfo.RedirectStandardError = true;
-                    process.StartInfo.RedirectStandardInput = true;
-                    process.EnableRaisingEvents = true;
-                    process.OutputDataReceived += Process_OutputDataReceived;
+                    var process = GetProcess($"remove {pluginName} --strict --no-input --dir=\"{ServerPath}\"");
                     process.Exited += RemovePluginProcess_Exited;
                     process.Start();
                     process.BeginOutputReadLine();
@@ -240,6 +244,98 @@ namespace RazzTools
             {
                 _exitCode = exitcode;
             }
+        }
+
+
+        //classes for parsing https://assets.umod.org/uMod.Manifest.json
+        public class Rootobject
+        {
+            public Package[] Packages { get; set; }
+            public Game[] Games { get; set; }
+        }
+
+        public class Package
+        {
+            public string Title { get; set; }
+            public string Name { get; set; }
+            public string RootFolder { get; set; }
+            public string FileName { get; set; }
+            public Resource[] Resources { get; set; }
+        }
+
+        public class Resource
+        {
+            public int Type { get; set; }
+            public string Version { get; set; }
+            public Artifact[] Artifacts { get; set; }
+        }
+
+        public class Artifact
+        {
+            public string Checksum { get; set; }
+            public string Url { get; set; }
+            public string Architecture { get; set; }
+            public string Platform { get; set; }
+        }
+
+        public class Game
+        {
+            public string Name { get; set; }
+            public string Aliases { get; set; }
+            public string ServiceUrl { get; set; }
+            public string PackageName { get; set; }
+            public string Sdk { get; set; }
+            public string PreprocessorSymbol { get; set; }
+            public Scandata ScanData { get; set; }
+            public Steam Steam { get; set; }
+            public Launcher Launcher { get; set; }
+        }
+
+        public class Scandata
+        {
+            public Keyfile[] KeyFiles { get; set; }
+        }
+
+        public class Keyfile
+        {
+            public int Type { get; set; }
+            public string Path { get; set; }
+        }
+
+        public class Steam
+        {
+            public int AppId { get; set; }
+            public string DefaultBranch { get; set; }
+            public string Login { get; set; }
+            public Clienttarget ClientTarget { get; set; }
+            public Branch[] Branches { get; set; }
+        }
+
+        public class Clienttarget
+        {
+            public string x32 { get; set; }
+            public string x64 { get; set; }
+        }
+
+        public class Branch
+        {
+            public string Name { get; set; }
+            public int BuildId { get; set; }
+            public Lastupdate LastUpdate { get; set; }
+            public int Password { get; set; }
+        }
+
+        public class Lastupdate
+        {
+            public string date { get; set; }
+            public int timezone_type { get; set; }
+            public string timezone { get; set; }
+        }
+
+        public class Launcher
+        {
+            public string Template { get; set; }
+            public string Arguments { get; set; }
         }
     }
 }

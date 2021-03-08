@@ -29,6 +29,7 @@ namespace ValheimServerWarden
         private int refreshInterval;
         private Timer retryTimer;
         private int retryInterval;
+        private double prevExtentHeight;
         public ValheimServer Server
         {
             get
@@ -41,6 +42,7 @@ namespace ValheimServerWarden
             InitializeComponent();
             _server = server;
             this.Title = $"{server.LogRawName}";
+            prevExtentHeight = 0;
             RefreshLogText();
 
             refreshInterval = 1000;
@@ -105,6 +107,20 @@ namespace ValheimServerWarden
                         paragraph.Margin = new Thickness(0);
                         txtLog.Document.Blocks.Add(paragraph);
                         lastRefresh = DateTime.Now;
+                        //Debug.WriteLine(txtLog.VerticalOffset+" "+txtLog.ExtentHeight+" "+txtLog.ViewportHeight);
+                        if (prevExtentHeight < txtLog.ViewportHeight && txtLog.ExtentHeight > txtLog.ViewportHeight)
+                        {
+                            txtLog.ScrollToEnd();
+                        }
+                        else if (txtLog.VerticalOffset+txtLog.ViewportHeight == prevExtentHeight)
+                        {
+                            txtLog.ScrollToEnd();
+                        }
+                        else if (txtLog.VerticalOffset+txtLog.ViewportHeight == txtLog.ExtentHeight)
+                        {
+                            txtLog.ScrollToEnd();
+                        }
+                        prevExtentHeight = txtLog.ExtentHeight;
                     }
                     catch (IOException ex)
                     {
@@ -157,6 +173,12 @@ namespace ValheimServerWarden
             {
                 menuLogCopy.Visibility = Visibility.Visible;
             }
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            txtLog.ScrollToEnd();
+            prevExtentHeight = txtLog.ExtentHeight;
         }
     }
 }

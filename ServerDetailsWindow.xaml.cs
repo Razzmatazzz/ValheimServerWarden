@@ -50,10 +50,6 @@ namespace ValheimServerWarden
             {
                 cmbServerType.Items.Add(installmethod);
             }
-            if (!uMod.Installed)
-            {
-                cmbServerType.Items.Remove(ValheimServer.ServerInstallMethod.uMod);
-            }
             RefreshControls();
             attachServerEventHandlers();
             ServerToControls();
@@ -127,6 +123,7 @@ namespace ValheimServerWarden
                     //btnStop.Content = FindResource("StopGrey");
                     //btnStart.Content = FindResource("StartGrey");
                     btnConnect.Content = FindResource("ConnectGrey");
+                    btnuModInstall.IsEnabled = false;
                     btnuModUpdate.IsEnabled = false;
                     if (status == ValheimServer.ServerStatus.Running)
                     {
@@ -146,6 +143,7 @@ namespace ValheimServerWarden
                         //btnStart.Content = FindResource("Start");
                         btnStart.Visibility = Visibility.Visible;
                         menuSteamCmdUpdate.Visibility = Visibility.Visible;
+                        btnuModInstall.IsEnabled = true;
                         btnuModUpdate.IsEnabled = true;
                     } 
                     else
@@ -174,19 +172,13 @@ namespace ValheimServerWarden
                         chkUpdateOnRestart.Visibility = Visibility.Visible;
                         gridAutoUpdate.Visibility = Visibility.Visible;
                     }
-                    else if (uMod.Installed && Server.InstallMethod == ValheimServer.ServerInstallMethod.uMod)
-                    {
-                        btnSteamCmd.Visibility = Visibility.Collapsed;
-                        chkUpdateOnRestart.Visibility = Visibility.Visible;
-                        gridAutoUpdate.Visibility = Visibility.Collapsed;
-                    }
                     else
                     {
                         btnSteamCmd.Visibility = Visibility.Collapsed;
                         chkUpdateOnRestart.Visibility = Visibility.Collapsed;
                         gridAutoUpdate.Visibility = Visibility.Collapsed;
                     }
-                    if (uMod.Installed && Server.InstallMethod == ValheimServer.ServerInstallMethod.uMod)
+                    if (uMod.AgentInstalled)
                     {
                         tabuMod.Visibility = Visibility.Visible;
                     }
@@ -283,6 +275,7 @@ namespace ValheimServerWarden
                     txtUpdateCheckInterval.IsEnabled = true;
                 }
                 cmbPriority.SelectedItem = Server.ProcessPriority;
+                chkuModUpdate.IsChecked = Server.AutoUpdateuMod;
             }
             catch (Exception ex)
             {
@@ -434,10 +427,7 @@ namespace ValheimServerWarden
             Server.Public = chkPublic.IsChecked.GetValueOrDefault();
             Server.InstallPath = txtServerDir.Text;
             Server.InstallMethod = (ValheimServer.ServerInstallMethod)cmbServerType.SelectedIndex;
-            if (Server.InstallMethod == ValheimServer.ServerInstallMethod.uMod)
-            {
-                chkAutoUpdate.IsChecked = false;
-            }
+
             Server.Autostart = chkAutostart.IsChecked.GetValueOrDefault();
             Server.RawLog = chkRawLog.IsChecked.GetValueOrDefault();
             Server.ProcessPriority = (ProcessPriorityClass)cmbPriority.SelectedItem;
@@ -826,13 +816,92 @@ namespace ValheimServerWarden
         {
             if (Server.Status == ValheimServer.ServerStatus.Stopped)
             {
-                Server.Update();
+                this.Dispatcher.Invoke(() =>
+                {
+                    btnuModUpdate.IsEnabled = false;
+                });
+                var umod = new uMod(Server.InstallPath, "valheim");
+                umod.UpdateEnded += Umod_UpdateEnded;
+                umod.LoggedMessage += (object sender, LoggedMessageEventArgs args) =>
+                {
+                    LogMessage("uMod: " + args.LogEntry.Message, args.LogEntry.Type);
+                };
+                umod.Update("core apps extensions");
             }
             else
             {
                 var mmb = new ModernMessageBox(this);
                 mmb.Show("Stop server before updating.", "Server Running", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private void Umod_UpdateEnded(object sender, uMod.ProcessEndedEventArgs e)
+        {
+            this.Dispatcher.Invoke(() =>
+            {
+                btnuModUpdate.IsEnabled = true;
+                if (e.ExitCode == 0)
+                {
+                    var mmb = new ModernMessageBox(this);
+                    mmb.Show("uMod update compelete.", "uMod Updated", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else if (e.ExitCode == 2)
+                {
+                    var mmb = new ModernMessageBox(this);
+                    mmb.Show($"uMod did not need to install any updates.", "No Update Needed", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    var mmb = new ModernMessageBox(this);
+                    mmb.Show($"uMod terminated with code {e.ExitCode}; unable to update uMod core or uMod apps.", "uMod Update Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            });
+        }
+
+        private void btnuModInstall_Click(object sender, RoutedEventArgs e)
+        {
+            if (Server.Status == ValheimServer.ServerStatus.Stopped)
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    btnuModInstall.IsEnabled = false;
+                });
+                var umod = new uMod(Server.InstallPath, "valheim");
+                umod.InstallEnded += Umod_InstallEnded;
+                umod.LoggedMessage += (object sender, LoggedMessageEventArgs args) =>
+                {
+                    LogMessage("uMod: "+args.LogEntry.Message, args.LogEntry.Type);
+                };
+                umod.Install("umod");
+            }
+            else
+            {
+                var mmb = new ModernMessageBox(this);
+                mmb.Show("Stop server before updating.", "Server Running", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void Umod_InstallEnded(object sender, uMod.ProcessEndedEventArgs e)
+        {
+            this.Dispatcher.Invoke(() =>
+            {
+                btnuModInstall.IsEnabled = true;
+                if (e.ExitCode == 0)
+                {
+                    var mmb = new ModernMessageBox(this);
+                    mmb.Show("uMod installation compelete.", "uMod Installed", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    var mmb = new ModernMessageBox(this);
+                    mmb.Show($"uMod terminated with code {e.ExitCode}, which indicates an error.", "uMod Installation Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            });
+        }
+
+        private void chkuModUpdate_Checked(object sender, RoutedEventArgs e)
+        {
+            Server.AutoUpdateuMod = chkuModUpdate.IsChecked.GetValueOrDefault();
         }
     }
 

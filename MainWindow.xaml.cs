@@ -41,6 +41,7 @@ namespace ValheimServerWarden
         private List<ServerDetailsWindow> serverDetailWindows;
         private List<ServerLogWindow> serverLogWindows;
         private List<LogEntry> logEntries;
+        private FileSystemWatcher shutdownWatcher;
         private string ServerJsonPath
         {
             get
@@ -136,6 +137,34 @@ namespace ValheimServerWarden
             dgServers.ItemsSource = ValheimServer.Servers;//servers;
             RefreshDataGrid();
             checkForRunningServers();
+
+            if (File.Exists("shutdown.now")) File.Delete("shutdown.now");
+            shutdownWatcher = new();
+            shutdownWatcher.NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.FileName;
+            shutdownWatcher.Filter = "shutdown.now";
+            shutdownWatcher.Path = System.AppDomain.CurrentDomain.BaseDirectory;
+            shutdownWatcher.EnableRaisingEvents = true;
+            shutdownWatcher.Created += ShutdownWatcher_Created;
+            shutdownWatcher.Renamed += ShutdownWatcher_Created;
+        }
+
+        private void ShutdownWatcher_Created(object sender, FileSystemEventArgs e)
+        {
+            try
+            {
+                logMessage("Shutdown file detected, initiating shutdown of server(s).");
+                foreach (var server in ValheimServer.Servers)
+                {
+                    if (server.Status != ValheimServer.ServerStatus.Stopped && server.Status != ValheimServer.ServerStatus.Stopping)
+                    {
+                        server.Stop();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logMessage($"Error while stopping servers for shutdown: {ex.Message}");
+            }
         }
 
         private void NotifyMenuQuit_Click(object sender, EventArgs e)

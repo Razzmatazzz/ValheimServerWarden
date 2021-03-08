@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         xmlns:ui="http://schemas.modernwpf.com/2019"
         ui:WindowHelper.UseModernWindowStyle="True"
-        Title="ServerLogWindow" Height="450" Width="800">
+        Title="ServerLogWindow" Height="450" Width="800" Loaded="Window_Loaded">
     <Grid>
         <RichTextBox x:Name="txtLog" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ContextMenuOpening="txtLog_ContextMenuOpening">
             <RichTextBox.ContextMenu>

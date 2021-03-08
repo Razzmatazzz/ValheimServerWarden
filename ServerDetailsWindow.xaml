@@ -362,14 +362,19 @@
                         <RowDefinition/>
                         <RowDefinition/>
                     </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition/>
-                    </Grid.ColumnDefinitions>
-                    <Button x:Name="btnuModUpdate" Content="Update" ToolTip="Update server, uMod, apps, and extensions via uMod" Margin="5" Grid.Row="0" Grid.Column="0" Click="btnuModUpdate_Click"/>
-                    <TextBlock TextWrapping="Wrap" Margin="5" Grid.Row="1" Grid.Column="0">
-                        This tab is visible because VSW detected you have uMod installed and you selected uMod for the server install method. uMod support is extremely experimental and may not work at all.<LineBreak/><LineBreak/>
-                        Because uMod does not have a command to check for updates, it is not currently possible to check for updates while a uMod server is running. But if you have the "Update on restart" option selected, 
-                        VSW will attempt to use uMod to update the server on scheduled restarts.
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="btnuModInstall" Content="Install" ToolTip="Install uMod for this server" Margin="10" Grid.Column="0" Click="btnuModInstall_Click"/>
+                        <Button x:Name="btnuModUpdate" Content="Update" ToolTip="Update uMod, apps, and extensions" Margin="10" Grid.Column="1" Click="btnuModUpdate_Click"/>
+                        <CheckBox x:Name="chkuModUpdate" Content="Update uMod on server start" ToolTip="Update uMod and its apps and extensions whenever the server is starting" Margin="10" VerticalAlignment="Center" Grid.Column="2" Checked="chkuModUpdate_Checked" Unchecked="chkuModUpdate_Checked"/>
+                    </Grid>
+                    <TextBlock TextWrapping="Wrap" Margin="5" Grid.Row="1">
+                        This tab is visible because VSW detected you have uMod installed. uMod support is extremely experimental and may not work at all.<LineBreak/><LineBreak/>
+                        You can use these buttons to install uMod onto this server, update uMod and its apps and extension, and to check for uMod updates whenever the server is starting.
                     </TextBlock>
                 </Grid>
             </TabItem>
