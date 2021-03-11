@@ -1,0 +1,53 @@
+﻿<Window x:Class="ValheimServerWarden.DiscordWebhookEventNamesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ValheimServerWarden"
+        mc:Ignorable="d"
+        xmlns:ui="http://schemas.modernwpf.com/2019"
+        ui:WindowHelper.UseModernWindowStyle="True"
+        Title="Discord Webhook Event Names" Height="Auto" SizeToContent="Height" Width="350">
+    <Window.Resources>
+        <BitmapImage x:Key="Remove" UriSource="Resources/Remove_32x.png" />
+    </Window.Resources>
+    <Grid x:Name="gridMain">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid x:Name="gridNames" Grid.Row="0" Height="Auto">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Label Content="Event key" Margin="10" VerticalAlignment="Center" Grid.Row="0" Grid.Column="0"/>
+            <Grid Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Label Content="Event name" Margin="10" VerticalAlignment="Center" Grid.Column="0"/>
+                <Button x:Name="btnAddEvent" ToolTip="Add event" Margin="10" Grid.Column="1" Click="btnAddEvent_Click">
+                    <Button.Content>
+                        <Image Source="Resources/Add_32x.png"/>
+                    </Button.Content>
+                </Button>
+            </Grid>
+        </Grid>
+        <Grid x:Name="gridButtons" Grid.Row="1" Grid.ColumnSpan="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Button x:Name="btnSave" Content="Save" Margin="10" Grid.Column="1" Click="btnSave_Click"/>
+            <Button x:Name="btnCancel" Content="Cancel" Margin="10" Grid.Column="2" Click="btnCancel_Click"/>
+        </Grid>
+    </Grid>
+</Window>

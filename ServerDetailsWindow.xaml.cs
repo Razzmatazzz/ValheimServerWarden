@@ -800,7 +800,7 @@ namespace ValheimServerWarden
 
         private void menuSteamCmdCheckUpdate_Click(object sender, RoutedEventArgs e)
         {
-            Server.CheckForUpdate();
+            Server.CheckForUpdate(true);
         }
 
         private void chkAutoUpdate_Checked(object sender, RoutedEventArgs e)

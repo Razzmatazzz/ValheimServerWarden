@@ -185,6 +185,7 @@ namespace ValheimServerWarden
         private void NotifyIcon_Click(object sender, EventArgs e)
         {
             Show();
+            Activate();
             WindowState = storedWindowState;
         }
         private void NotifyIcon_MouseClick(object sender, System.Windows.Forms.MouseEventArgs e)
@@ -192,6 +193,7 @@ namespace ValheimServerWarden
             if (e.Button == System.Windows.Forms.MouseButtons.Left)
             {
                 Show();
+                Activate();
                 WindowState = storedWindowState;
             }
             else

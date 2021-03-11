@@ -8,6 +8,10 @@
         xmlns:ui="http://schemas.modernwpf.com/2019"
         ui:WindowHelper.UseModernWindowStyle="True"
         Title="Discord Webhook" Height="Auto" Width="800" SizeToContent="Height">
+    <Window.Resources>
+        <Image x:Key="Edit" Source="Resources/Edit_32x.png"/>
+        <Image x:Key="Cancel" Source="Resources/Cancel_32x.png"/>
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -53,7 +57,17 @@
         <TextBox x:Name="txtOnFailedPassword" Tag="OnFailedPassword" Margin="5" Grid.Row="9" Grid.Column="1" />
         <Button x:Name="btnFailedPassword" Content="Test" Tag="OnFailedPassword" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="9" Grid.Column="2" Click="btnTestWebhook_Click"/>
         <Label Content="Random Event" Margin="10,5,5,5" VerticalAlignment="Center" Grid.Row="10" Grid.Column="0"/>
-        <TextBox x:Name="txtOnRandomServerEvent" Tag="OnRandomServerEvent" Margin="5" Grid.Row="10" Grid.Column="1" />
+        <TextBox x:Name="txtOnRandomServerEvent" Tag="OnRandomServerEvent" Margin="5" Grid.Row="10" Grid.Column="1">
+            <TextBox.ContextMenu>
+                <ContextMenu>
+                    <MenuItem x:Name="menuServerEventNames" Header="Edit random event names" Click="menuServerEventNames_Click">
+                        <MenuItem.Icon>
+                            <Image Source="Resources/Edit_32x.png"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                </ContextMenu>
+            </TextBox.ContextMenu>
+        </TextBox>
         <Button x:Name="btnRandomServerEvent" Content="Test" Tag="OnRandomServerEvent" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="10" Grid.Column="2" Click="btnTestWebhook_Click"/>
         <Grid Grid.Row="11" Grid.ColumnSpan="3" HorizontalAlignment="Center">
             <Grid.ColumnDefinitions>

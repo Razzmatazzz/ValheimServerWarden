@@ -24,6 +24,7 @@ namespace ValheimServerWarden
         private ValheimServer _server;
         private List<TextBox> messageControls;
         private TextBox clickedTextBox;
+        private MenuItem menuEditNames;
         public DiscordWebhookWindow(ValheimServer server)
         {
             InitializeComponent();
@@ -36,7 +37,13 @@ namespace ValheimServerWarden
             var defaultMenu = new MenuItem();
             contextMenu.Items.Add(defaultMenu);
             defaultMenu.Header = "Reset to default";
+            defaultMenu.Icon = FindResource("Cancel");
             defaultMenu.Click += DefaultMenu_Click;
+            menuEditNames = new MenuItem();
+            contextMenu.Items.Add(menuEditNames);
+            menuEditNames.Header = "Edit random event names";
+            menuEditNames.Icon = FindResource("Edit");
+            menuEditNames.Click += MenuEditNames_Click;
 
             messageControls = new();
             messageControls.Add(txtOnPlayerConnected);
@@ -55,9 +62,25 @@ namespace ValheimServerWarden
             }
         }
 
+        private void MenuEditNames_Click(object sender, RoutedEventArgs e)
+        {
+            var win = new DiscordWebhookEventNamesWindow(_server);
+            win.Owner = this;
+            win.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            win.ShowDialog();
+        }
+
         private void TextBox_ContextMenuOpening(object sender, ContextMenuEventArgs e)
         {
             clickedTextBox = (TextBox)sender;
+            if (clickedTextBox.Tag.ToString() == "OnRandomServerEvent")
+            {
+                menuEditNames.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                menuEditNames.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void DefaultMenu_Click(object sender, RoutedEventArgs e)
@@ -90,13 +113,26 @@ namespace ValheimServerWarden
         {
             var oldUrl = _server.DiscordWebhook;
             _server.DiscordWebhook = txtWebhook.Text;
-            _server.SendDiscordWebhook(((Button)sender).Tag.ToString(), new Player("Bjorn", "123456789101112"), "army_bonemass");
+            var events = (ValheimServer.DiscordWebhookDefaultAttackNames.Keys).ToList<string>();
+            foreach (var cust in _server.DiscordServerEventNames.Keys)
+            {
+                if (!events.Contains(cust))
+                {
+                    events.Add(cust);
+                }
+            }
+            _server.SendDiscordWebhook(((Button)sender).Tag.ToString(), new Player("Bjorn", "123456789101112"), events[(new Random()).Next(events.Count)]);
             _server.DiscordWebhook = oldUrl;
         }
 
         private void btnCancel_Click(object sender, RoutedEventArgs e)
         {
             Close();
+        }
+
+        private void menuServerEventNames_Click(object sender, RoutedEventArgs e)
+        {
+            
         }
     }
 }

@@ -43,7 +43,20 @@ namespace ValheimServerWarden
             {"OnPlayerConnected", "{Player.Name} has entered the fray!" },
             {"OnPlayerDisconnected", "{Player.Name} has departed." },
             {"OnPlayerDied", "{Player.Name} met an untimely demise." },
-            {"OnRandomServerEvent", "An {EventName} attack is underway!" }
+            {"OnRandomServerEvent", "{EventName} are attacking!" }
+        };
+        public static Dictionary<string, string> DiscordWebhookDefaultAttackNames { get; } = new Dictionary<string, string>
+        {
+            { "army_eikthyr", "Eikthyr's Kin" },
+            { "army_theelder", "The Elder's Minions" },
+            { "army_bonemass", "Swamp Monsters" },
+            { "army_moder", "Moder's Minions" },
+            { "army_goblin", "Fulings" },
+            { "foresttrolls", "Forest Trolls" },
+            { "skeletons", "Skeletons" },
+            { "blobs", "Blobs" },
+            { "wolves", "Wolves" },
+            { "surtlings", "Surtlings" }
         };
         public static string SteamID { get { return "896660"; } }
         struct ServerData
@@ -287,6 +300,7 @@ namespace ValheimServerWarden
                 this._discordWebhookMesssages = value;
             }
         }
+        public Dictionary<string, string> DiscordServerEventNames { get; set; }
         public string InstallPath { get; set; }
         public ProcessPriorityClass ProcessPriority
         {
@@ -401,7 +415,7 @@ namespace ValheimServerWarden
                 return $"{logname}-{this.Port}-{this.World}.log";
             }
         }
-        public ValheimServer(string name, int port, string world, string password, bool pubserver, bool autostart, bool rawlog, int restarthours, bool updateonrestart, int updatecheckminutes, string discordwebhook, Dictionary<string,string> discordmessages, ServerInstallMethod install, string instpath, ProcessPriorityClass processpriority, bool umodupdating)
+        public ValheimServer(string name, int port, string world, string password, bool pubserver, bool autostart, bool rawlog, int restarthours, bool updateonrestart, int updatecheckminutes, string discordwebhook, Dictionary<string,string> discordmessages, Dictionary<string, string> discordservereventnames, ServerInstallMethod install, string instpath, ProcessPriorityClass processpriority, bool umodupdating)
         {
             this.data.name = name;
             this.data.port = 2456;
@@ -416,6 +430,7 @@ namespace ValheimServerWarden
             this.data.discordWebhook = discordwebhook;
             this.data.processPriority = processpriority;
             this._discordWebhookMesssages = discordmessages;
+            this.DiscordServerEventNames = discordservereventnames;
             this.data.autoUpdateuMod = umodupdating;
             InstallMethod = install;
             InstallPath = instpath;
@@ -455,7 +470,7 @@ namespace ValheimServerWarden
         private void UpdateTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             CheckedForUpdate += ValheimServer_ScheduledCheckedForUpdate;
-            this.CheckForUpdate();
+            this.CheckForUpdate(false);
         }
 
         private void ValheimServer_ScheduledCheckedForUpdate(object sender, UpdateCheckEventArgs e)
@@ -466,7 +481,6 @@ namespace ValheimServerWarden
                 if (this.PlayerCount == 0)
                 {
                     OnAutomaticUpdate(new EventArgs());
-                    this.Stop();
                 }
                 else
                 {
@@ -484,18 +498,17 @@ namespace ValheimServerWarden
             if (this.PlayerCount == 0)
             {
                 OnScheduledRestart(new EventArgs());
-                this.Stop();
             } else
             {
                 this.needsRestart = true;
             }
         }
 
-        public ValheimServer() : this("My Server", 2456, "Dedicated", "Secret", false, false, false, 0, false, 0, null, new Dictionary<string,string>(), ServerInstallMethod.Manual, Properties.Settings.Default.ServerFilePath, ProcessPriorityClass.Normal, false)
+        public ValheimServer() : this("My Server", 2456, "Dedicated", "Secret", false, false, false, 0, false, 0, null, new Dictionary<string, string>(), new Dictionary<string, string>(), ServerInstallMethod.Manual, Properties.Settings.Default.ServerFilePath, ProcessPriorityClass.Normal, false)
         {
         }
 
-        public ValheimServer(string name) : this(name, 2456, "Dedicated", "Secret", false, false, false, 0, false, 0, null, new Dictionary<string,string>(), ServerInstallMethod.Manual, Properties.Settings.Default.ServerFilePath, ProcessPriorityClass.Normal, false)
+        public ValheimServer(string name) : this(name, 2456, "Dedicated", "Secret", false, false, false, 0, false, 0, null, new Dictionary<string,string>(), new Dictionary<string, string>(), ServerInstallMethod.Manual, Properties.Settings.Default.ServerFilePath, ProcessPriorityClass.Normal, false)
         {
 
         }
@@ -525,7 +538,17 @@ namespace ValheimServerWarden
             }
             return null;
         }
-
+        public string GetWebhookServerEventName(string serverEventName) {
+            if (this.DiscordServerEventNames.ContainsKey(serverEventName))
+            {
+                return this.DiscordServerEventNames[serverEventName];
+            }
+            else if (DiscordWebhookDefaultAttackNames.ContainsKey(serverEventName))
+            {
+                return DiscordWebhookDefaultAttackNames[serverEventName];
+            }
+            return serverEventName;
+        }
         public void SendDiscordWebhook(string EventName, Player player, string serverEventName)
         {
             string message = GetWebhookMessage(EventName);
@@ -543,7 +566,7 @@ namespace ValheimServerWarden
             }
             if (serverEventName != null)
             {
-                message = message.Replace("{EventName}", serverEventName);
+                message = message.Replace("{EventName}", GetWebhookServerEventName(serverEventName));
             }
             SendDiscordWebhook(message);
         }
@@ -557,10 +580,17 @@ namespace ValheimServerWarden
             {
                 using (DiscordWebhook webhook = new DiscordWebhook())
                 {
-                    //webhook.ProfilePicture = "https://static.giantbomb.com/uploads/original/4/42381/1196379-gas_mask_respirator.jpg";
-                    //webhook.UserName = "Bot";
-                    webhook.WebHook = this.DiscordWebhook;
-                    webhook.SendMessage(message);
+                    try
+                    {
+                        //webhook.ProfilePicture = "https://static.giantbomb.com/uploads/original/4/42381/1196379-gas_mask_respirator.jpg";
+                        //webhook.UserName = "Bot";
+                        webhook.WebHook = this.DiscordWebhook;
+                        webhook.SendMessage(message);
+                    }
+                    catch (Exception ex)
+                    {
+                        addToLog($"Error sending Discord webhook: {ex.Message}", LogEntryType.Error);
+                    }
                 }
             }
         }
@@ -583,9 +613,13 @@ namespace ValheimServerWarden
                     //not being able to clear the log is not a major problem
                 }
             }
+
+            Regex rx;
+            Match match;
+
             //Monitor for incorrect password attempts
-            Regex rx = new Regex(@"Peer (\d+) has wrong password", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            Match match = rx.Match(msg);
+            rx = new Regex(@"Peer (\d+) has wrong password", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            match = rx.Match(msg);
             if (match.Success)
             {
                 if (connectingSteamIds.Contains(match.Groups[1].ToString()))
@@ -642,38 +676,49 @@ namespace ValheimServerWarden
             {
                 string steamid = match.Groups[1].ToString();
                 //Player player = new Player(match.Groups[1].ToString(), this.connectingSteamID);
+                var playerfound = false;
                 foreach (Player player in this.players)
                 {
                     if (steamid.Equals(player.SteamID))
                     {
                         this.players.Remove(player);
                         OnPlayerDisconnected(new PlayerEventArgs(player));
-                        if (this.needsRestart && this.PlayerCount == 0)
+                        playerfound = true;
+                        if (this.PlayerCount == 0)
                         {
-                            OnScheduledRestart(new EventArgs());
-                            this.Stop();
-                        }
-                        if (this.needsUpdate && this.PlayerCount == 0)
-                        {
-                            OnAutomaticUpdate(new EventArgs());
-                            this.Stop();
+                            if (this.needsRestart)
+                            {
+                                OnScheduledRestart(new EventArgs());
+                            } else if (this.needsUpdate)
+                            {
+                                OnAutomaticUpdate(new EventArgs());
+                            }
                         }
                         break;
+                    }
+                }
+                if (!playerfound)
+                {
+                    if (connectingSteamIds.Contains(match.Groups[1].ToString()))
+                    {
+                        connectingSteamIds.Remove(match.Groups[1].ToString());
                     }
                 }
                 return;
             }
 
-            //Monitor for update to number of players connected
-            /*rx = new Regex(@"Connections (\d+) ZDOS:(?:\d+)  sent:(?:\d+) recv:(?:\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            //Monitor for random events
+            rx = new Regex(@"Random event set:([a-zA-Z0-9_]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
             match = rx.Match(msg);
             if (match.Success)
             {
-                this.playerCount = Int16.Parse(match.Groups[1].ToString());
-                OnPlayerCountUpdated(new ServerEventArgs(this));
-            }*/
+                OnRandomServerEvent(new RandomServerEventArgs(match.Groups[1].ToString()));
+                return;
+                //army_moder
+            }
 
             //Monitor for server finishes starting
+            //Last since it should only happen once per server restart, so more efficient overall to check others first
             if (this.Status == ServerStatus.Starting)
             {
                 rx = new Regex(@"DungeonDB Start \d+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -698,15 +743,14 @@ namespace ValheimServerWarden
                 return;
             }*/
 
-            //Monitor for random events
-            rx = new Regex(@"Random event set:([a-zA-Z0-9_]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            //Monitor for update to number of players connected
+            /*rx = new Regex(@"Connections (\d+) ZDOS:(?:\d+)  sent:(?:\d+) recv:(?:\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
             match = rx.Match(msg);
             if (match.Success)
             {
-                OnRandomServerEvent(new RandomServerEventArgs(match.Groups[1].ToString()));
-                return;
-                //army_moder
-            }
+                this.playerCount = Int16.Parse(match.Groups[1].ToString());
+                OnPlayerCountUpdated(new ServerEventArgs(this));
+            }*/
         }
         public void Start()
         {
@@ -908,7 +952,7 @@ namespace ValheimServerWarden
                     if (this.UpdateOnRestart && this.InstallMethod == ServerInstallMethod.SteamCMD)
                     {
                         this.CheckedForUpdate += ValheimServer_CheckedForUpdateAndRestart;
-                        this.CheckForUpdate();
+                        this.CheckForUpdate(false);
                     }
                     else
                     {
@@ -1199,6 +1243,7 @@ namespace ValheimServerWarden
             addToLog($"Initiating scheduled restart...");
             EventHandler<EventArgs> handler = ScheduledRestart;
             if (null != handler) handler(this, args);
+            this.Stop();
         }
         private void OnAutomaticUpdate(EventArgs args)
         {
@@ -1206,6 +1251,7 @@ namespace ValheimServerWarden
             addToLog($"Initiating automatic update...");
             EventHandler<EventArgs> handler = AutomaticUpdate;
             if (null != handler) handler(this, args);
+            this.Stop();
         }
         private void OnErrorOccurred(ServerErrorEventArgs args)
         {
@@ -1224,9 +1270,9 @@ namespace ValheimServerWarden
                         addToLog($"Server update available.", LogEntryType.Success);
                     }
                 }
-                else
+                else if (args.Noisy)
                 {
-                    //addToLog($"No server update available.");
+                    addToLog($"No server update available.");
                 }
             }
             else
@@ -1274,7 +1320,7 @@ namespace ValheimServerWarden
         {
             addToLog(message, LogEntryType.Normal);
         }
-        public void CheckForUpdate()
+        public void CheckForUpdate(bool noisy)
         {
             try
             {
@@ -1313,7 +1359,20 @@ namespace ValheimServerWarden
                                 return;
                             }
                             var manifestpath = new FileInfo(this.InstallPath).DirectoryName + $@"\steamapps\appmanifest_{ValheimServer.SteamID}.acf";
-                            if (File.Exists(manifestpath))
+                            var appManifestFound = File.Exists(manifestpath);
+                            if (!appManifestFound)
+                            {
+                                var steamcmdpath = new FileInfo(Properties.Settings.Default.SteamCMDPath).DirectoryName;
+                                if (this.InstallPath.StartsWith($@"{steamcmdpath}\steamapps\common"))
+                                {
+                                    if (File.Exists($@"{steamcmdpath}\steamapps\appmanifest_{ValheimServer.SteamID}.acf"))
+                                    {
+                                        manifestpath = $@"{steamcmdpath}\steamapps\appmanifest_{ValheimServer.SteamID}.acf";
+                                        appManifestFound = true;
+                                    }
+                                }
+                            }
+                            if (appManifestFound)
                             {
                                 var manifest = File.ReadAllText(manifestpath);
                                 match = rx.Match(manifest);
@@ -1325,7 +1384,7 @@ namespace ValheimServerWarden
                                         OnCheckedForUpdate(new UpdateCheckEventArgs($"Local buildid {match.Groups[1]} is not a valid number."));
                                         return;
                                     }
-                                    OnCheckedForUpdate(new UpdateCheckEventArgs(true, remoteBuild > localBuild));
+                                    OnCheckedForUpdate(new UpdateCheckEventArgs(true, remoteBuild > localBuild, noisy));
                                 }
                                 else
                                 {
@@ -1572,10 +1631,12 @@ namespace ValheimServerWarden
         private readonly bool _updateAvailable;
         private readonly bool _success;
         private readonly string _message;
-        public UpdateCheckEventArgs(bool success, bool updateAvailable)
+        private readonly bool _noisy;
+        public UpdateCheckEventArgs(bool success, bool updateAvailable, bool noisy)
         {
             _success = success;
             _updateAvailable = updateAvailable;
+            _noisy = noisy;
             if (success)
             {
                 _message = "Success";
@@ -1585,7 +1646,7 @@ namespace ValheimServerWarden
                 _message = "Failed";
             }
         }
-        public UpdateCheckEventArgs(string errorMessage) : this(false,false)
+        public UpdateCheckEventArgs(string errorMessage) : this(false,false,false)
         {
             _message = errorMessage;
         }
@@ -1600,6 +1661,10 @@ namespace ValheimServerWarden
         public string Message
         {
             get { return _message; }
+        }
+        public bool Noisy
+        {
+            get { return _noisy; }
         }
     }
     public class UpdateEndedEventArgs : EventArgs
