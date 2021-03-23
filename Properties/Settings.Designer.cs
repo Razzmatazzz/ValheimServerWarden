@@ -142,5 +142,29 @@ namespace ValheimServerWarden.Properties {
                 this["WriteAppLog"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool RunningServerCheck {
+            get {
+                return ((bool)(this["RunningServerCheck"]));
+            }
+            set {
+                this["RunningServerCheck"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool StopOnClose {
+            get {
+                return ((bool)(this["StopOnClose"]));
+            }
+            set {
+                this["StopOnClose"] = value;
+            }
+        }
     }
 }

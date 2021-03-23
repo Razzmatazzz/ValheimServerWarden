@@ -49,6 +49,13 @@ namespace ValheimServerWarden
                 return "valheim_servers.json";
             }
         }
+        private string LogPath
+        {
+            get
+            {
+                return "vswlog.txt";
+            }
+        }
         public MainWindow()
         {
             InitializeComponent();
@@ -58,10 +65,10 @@ namespace ValheimServerWarden
                 Properties.Settings.Default.UpgradeRequired = false;
                 Properties.Settings.Default.Save();
             }
-            Width = Properties.Settings.Default.MainWindowWidth;
+            //Width = Properties.Settings.Default.MainWindowWidth;
             if (Properties.Settings.Default.MainWindowHeight > 0)
             {
-                Height = Properties.Settings.Default.MainWindowHeight;
+                //Height = Properties.Settings.Default.MainWindowHeight;
             }
             LogEntry.NormalColor = ((SolidColorBrush)this.Foreground).Color;
             logEntries = new List<LogEntry>();
@@ -79,7 +86,7 @@ namespace ValheimServerWarden
 
             if (Properties.Settings.Default.WriteAppLog)
             {
-                System.IO.File.WriteAllText("vswlog.txt", "");
+                System.IO.File.WriteAllText(LogPath, "");
             }
             txtLog.Document.Blocks.Clear();
             logMessage($"Version {typeof(MainWindow).Assembly.GetName().Version}");
@@ -93,6 +100,8 @@ namespace ValheimServerWarden
             cmbServerType.SelectedIndex = Properties.Settings.Default.ServerInstallType;
             chkAutoCheckUpdate.IsChecked = Properties.Settings.Default.AutoCheckUpdate;
             chkLog.IsChecked = Properties.Settings.Default.WriteAppLog;
+            chkRunningServerCheck.IsChecked = Properties.Settings.Default.RunningServerCheck;
+            chkStopOnClose.IsChecked = Properties.Settings.Default.StopOnClose;
             if (Properties.Settings.Default.AutoCheckUpdate)
             {
                 checkForUpdate();
@@ -113,7 +122,11 @@ namespace ValheimServerWarden
             notifyIcon.ContextMenuStrip = cm;
             storedWindowState = WindowState.Normal;
 
-            //servers = new List<ValheimServer>();
+            if (Properties.Settings.Default.RunningServerCheck)
+            {
+                checkForRunningServers();
+            }
+
             if (File.Exists(this.ServerJsonPath))
             {
                 try
@@ -136,7 +149,6 @@ namespace ValheimServerWarden
             }
             dgServers.ItemsSource = ValheimServer.Servers;//servers;
             RefreshDataGrid();
-            checkForRunningServers();
 
             if (File.Exists("shutdown.now")) File.Delete("shutdown.now");
             shutdownWatcher = new();
@@ -153,11 +165,27 @@ namespace ValheimServerWarden
             try
             {
                 logMessage("Shutdown file detected, initiating shutdown of server(s).");
+                ShutdownAndQuit();
+            }
+            catch (Exception ex)
+            {
+                logMessage($"Error while stopping servers for shutdown: {ex.Message}");
+            }
+        }
+
+        private void ShutdownAndQuit()
+        {
+            try
+            {
                 foreach (var server in ValheimServer.Servers)
                 {
                     if (server.Status != ValheimServer.ServerStatus.Stopped && server.Status != ValheimServer.ServerStatus.Stopping)
                     {
+                        server.Stopped += Server_StoppedShutdownCheck;
                         server.Stop();
+                    } else if (server.Status == ValheimServer.ServerStatus.Stopping)
+                    {
+                        server.Stopped += Server_StoppedShutdownCheck;
                     }
                 }
             }
@@ -165,6 +193,23 @@ namespace ValheimServerWarden
             {
                 logMessage($"Error while stopping servers for shutdown: {ex.Message}");
             }
+        }
+
+        private void Server_StoppedShutdownCheck(object sender, ServerStoppedEventArgs e)
+        {
+            var allStopped = true;
+            foreach (var s in ValheimServer.Servers)
+            {
+                if (s.Status != ValheimServer.ServerStatus.Stopped)
+                {
+                    allStopped = false;
+                    break;
+                }
+            }
+            this.Dispatcher.Invoke(() =>
+            {
+                if (allStopped) Close();
+            });
         }
 
         private void NotifyMenuQuit_Click(object sender, EventArgs e)
@@ -665,8 +710,16 @@ namespace ValheimServerWarden
                 {
                     if (server.Running)
                     {
-                        logMessage($"Server {server.DisplayName} is still running. Please stop all servers before exiting.", LogEntryType.Error);
                         e.Cancel = true;
+                        if (Properties.Settings.Default.StopOnClose)
+                        {
+                            logMessage($"Stopping all servers for app exit.");
+                            WindowState = WindowState.Minimized;
+                            ShutdownAndQuit();
+                        } else
+                        {
+                            logMessage($"Server {server.DisplayName} is still running. Please stop all servers before exiting.", LogEntryType.Error);
+                        }
                     }
                     else
                     {
@@ -831,7 +884,7 @@ namespace ValheimServerWarden
             });
             if (Properties.Settings.Default.WriteAppLog)
             {
-                StreamWriter writer = System.IO.File.AppendText("vswlog.txt");
+                StreamWriter writer = System.IO.File.AppendText(LogPath);
                 writer.WriteLine(entry.TimeStamp+": " +entry.Message);
                 writer.Close();
             }
@@ -1130,11 +1183,6 @@ namespace ValheimServerWarden
             }
         }
 
-        private void lblReportBug_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            Process.Start("cmd", "/C start https://github.com/Razzmatazzz/ValheimServerWarden/issues");
-        }
-
         private void btnSteamCmdPath_Click(object sender, RoutedEventArgs e)
         {
             var openFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
@@ -1233,9 +1281,26 @@ namespace ValheimServerWarden
             bool newValue = chkLog.IsChecked.HasValue ? chkLog.IsChecked.Value : false;
             if (newValue & !Properties.Settings.Default.WriteAppLog)
             {
-                System.IO.File.WriteAllText("vswlog.txt", DateTime.Now.ToString() + ": Version " + typeof(MainWindow).Assembly.GetName().Version + "\r\n");
+                System.IO.File.WriteAllText(LogPath, DateTime.Now.ToString() + ": Version " + typeof(MainWindow).Assembly.GetName().Version + "\r\n");
             }
             Properties.Settings.Default.WriteAppLog = newValue;
+            Properties.Settings.Default.Save();
+        }
+
+        private void btnReportBug_Click(object sender, RoutedEventArgs e)
+        {
+            Process.Start("cmd", "/C start https://github.com/Razzmatazzz/ValheimServerWarden/issues");
+        }
+
+        private void chkRunningServerCheck_Checked(object sender, RoutedEventArgs e)
+        {
+            Properties.Settings.Default.RunningServerCheck = chkRunningServerCheck.IsChecked.GetValueOrDefault();
+            Properties.Settings.Default.Save();
+        }
+
+        private void chkStopOnClose_Checked(object sender, RoutedEventArgs e)
+        {
+            Properties.Settings.Default.StopOnClose = chkStopOnClose.IsChecked.GetValueOrDefault();
             Properties.Settings.Default.Save();
         }
     }

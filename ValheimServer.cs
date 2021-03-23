@@ -415,6 +415,26 @@ namespace ValheimServerWarden
                 return $"{logname}-{this.Port}-{this.World}.log";
             }
         }
+        [JsonIgnore]
+        public double MemoryUsed
+        {
+            get
+            {
+                if (this.Status == ServerStatus.Running)
+                {
+                    try
+                    {
+                        process.Refresh();
+                        return Math.Round(process.WorkingSet64 / (1024.0 * 1024.0));
+                    }
+                    catch (Exception ex)
+                    {
+                        return 0;
+                    }
+                }
+                return 0;
+            }
+        }
         public ValheimServer(string name, int port, string world, string password, bool pubserver, bool autostart, bool rawlog, int restarthours, bool updateonrestart, int updatecheckminutes, string discordwebhook, Dictionary<string,string> discordmessages, Dictionary<string, string> discordservereventnames, ServerInstallMethod install, string instpath, ProcessPriorityClass processpriority, bool umodupdating)
         {
             this.data.name = name;
@@ -764,8 +784,11 @@ namespace ValheimServerWarden
             OnStarting(new EventArgs());
             if (uMod.AgentInstalled && AutoUpdateuMod)
             {
-                var umod = new uMod(InstallPath, "valheim");
+                var umod = new uMod(this.InstallPath, "valheim");
                 umod.UpdateEnded += StartuMod_UpdateEnded;
+                umod.LoggedMessage += ((sender, args) => {
+                    //addToLog("uMod: "+args.LogEntry.Message, args.LogEntry.Type);
+                });
                 umod.Update("core apps extensions");
             }
             else

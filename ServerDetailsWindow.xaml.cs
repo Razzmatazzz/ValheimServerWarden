@@ -34,6 +34,7 @@ namespace ValheimServerWarden
         private ValheimServer _server;
         private string _steamPath;
         private string _externalIP;
+        private System.Timers.Timer resourceTimer;
         public ValheimServer Server
         {
             get
@@ -49,6 +50,15 @@ namespace ValheimServerWarden
             foreach (var installmethod in Enum.GetValues(typeof(ValheimServer.ServerInstallMethod)))
             {
                 cmbServerType.Items.Add(installmethod);
+            }
+            resourceTimer = new();
+            resourceTimer.Interval = 10000;
+            resourceTimer.AutoReset = true;
+            resourceTimer.Elapsed += ResourceTimer_Elapsed;
+            if (Server.Status == ValheimServer.ServerStatus.Running)
+            {
+                UpdateServerResourcesUsed();
+                resourceTimer.Enabled = true;
             }
             RefreshControls();
             attachServerEventHandlers();
@@ -99,7 +109,7 @@ namespace ValheimServerWarden
             {
                 try
                 {
-                    Title = $"{this.Server.DisplayName} Details";
+                    Title = $"{this.Server.DisplayName}";
                     lblPlayerCount.Content = this.Server.PlayerCount;
                     dgPlayers.ItemsSource = this.Server.Players;
                     dgPlayers.Items.Refresh();
@@ -114,33 +124,25 @@ namespace ValheimServerWarden
                         lblStartTime.Content = Server.StartTime.ToString();
                     }
 
-                    /*btnStop.IsEnabled = false;
-                    btnStart.IsEnabled = false;*/
                     btnStart.Visibility = Visibility.Collapsed;
                     btnStop.Visibility = Visibility.Collapsed;
                     btnWorking.Visibility = Visibility.Collapsed;
-                    btnConnect.IsEnabled = false;
-                    //btnStop.Content = FindResource("StopGrey");
-                    //btnStart.Content = FindResource("StartGrey");
-                    btnConnect.Content = FindResource("ConnectGrey");
                     btnuModInstall.IsEnabled = false;
                     btnuModUpdate.IsEnabled = false;
+                    menuConnectPlay.Visibility = Visibility.Collapsed;
+                    menuConnectCheckExternal.Visibility = Visibility.Collapsed;
                     if (status == ValheimServer.ServerStatus.Running)
                     {
-                        //btnStop.IsEnabled = true;
-                        //btnStop.Content = FindResource("Stop");
                         btnStop.Visibility = Visibility.Visible;
                         if (_steamPath != null)
                         {
-                            btnConnect.IsEnabled = true;
-                            btnConnect.Content = FindResource("Connect");
+                            menuConnectPlay.Visibility = Visibility.Visible;
                         }
+                        menuConnectCheckExternal.Visibility = Visibility.Visible;
                         menuSteamCmdUpdate.Visibility = Visibility.Collapsed;
                     }
                     else if (status == ValheimServer.ServerStatus.Stopped)
                     {
-                        //btnStart.IsEnabled = true;
-                        //btnStart.Content = FindResource("Start");
                         btnStart.Visibility = Visibility.Visible;
                         menuSteamCmdUpdate.Visibility = Visibility.Visible;
                         btnuModInstall.IsEnabled = true;
@@ -217,14 +219,22 @@ namespace ValheimServerWarden
                     LogMessage(e.LogEntry);
                 });
             });
-            Server.Stopped += RefreshControls;
+            Server.Stopped += ((sender, e) => {
+                RefreshControls();
+                UpdateServerResourcesUsed();
+                resourceTimer.Enabled = false;
+            });
             Server.PlayerConnected += RefreshControls;
             Server.PlayerDisconnected += RefreshControls;
             Server.PlayerDied += RefreshControls;
             Server.FailedPassword += RefreshControls;
             Server.Starting += RefreshControls;
             Server.Stopping += RefreshControls;
-            Server.Started += RefreshControls;
+            Server.Started += ((sender, e) => {
+                RefreshControls();
+                UpdateServerResourcesUsed();
+                resourceTimer.Enabled = true;
+            });
             Server.StartFailed += RefreshControls;
             Server.StopFailed += RefreshControls;
             Server.Updated += ((object sender, UpdatedEventArgs e) =>
@@ -232,6 +242,11 @@ namespace ValheimServerWarden
                 RefreshControls();
                 ServerToControls();
             });
+        }
+
+        private void ResourceTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            UpdateServerResourcesUsed();
         }
 
         private void ServerToControls()
@@ -281,6 +296,13 @@ namespace ValheimServerWarden
             {
                 LogMessage($"Error reading server settings: {ex.Message}", LogEntryType.Error);
             }
+        }
+        private void UpdateServerResourcesUsed()
+        {
+            this.Dispatcher.Invoke(() =>
+            {
+                lblMemory.Content = Server.MemoryUsed.ToString("N0") + " MB";
+            });
         }
 
         private void GetExternalIP()
@@ -523,26 +545,12 @@ namespace ValheimServerWarden
 
         private void btnConnect_Click(object sender, RoutedEventArgs e)
         {
-            try
-            {
-                if (_steamPath != null)
-                {
-                    //Process.Start(_steamPath, $"steam://connect/127.0.0.1:{this.Server.Port + 1}");
-                    Process.Start(_steamPath, $"-applaunch 892970 +connect 127.0.0.1:{this.Server.Port} +password \"{this.Server.Password}\"");
-                }
-                else
-                {
-                    Debug.WriteLine("Steam path not found");
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex);
-            }
+            menuConnect.IsOpen = true;
         }
 
         private void menuConnectLink_Click(object sender, RoutedEventArgs e)
         {
+            // also test steam://run/892970//%2Bconnect%20{_externalIP}%3A{this.Server.Port}
             Clipboard.SetText($"steam://connect/{_externalIP}:{this.Server.Port + 1}");
         }
 
@@ -563,7 +571,8 @@ namespace ValheimServerWarden
 
         private void menuConnectCheckExternal_Click(object sender, RoutedEventArgs e)
         {
-            Process.Start("cmd", $"/C start https://southnode.net/form_get.php?ip={_externalIP}");
+            //Process.Start("cmd", $"/C start https://southnode.net/form_get.php?ip={_externalIP}");
+            Process.Start("cmd", $"/C start https://geekstrom.de/valheim/check/?host={WebUtility.UrlEncode($"{_externalIP}:{Server.Port + 1}")}");
         }
 
         private void btnSteamCmd_Click(object sender, RoutedEventArgs e)
@@ -902,6 +911,26 @@ namespace ValheimServerWarden
         private void chkuModUpdate_Checked(object sender, RoutedEventArgs e)
         {
             Server.AutoUpdateuMod = chkuModUpdate.IsChecked.GetValueOrDefault();
+        }
+
+        private void menuConnectPlay_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (_steamPath != null)
+                {
+                    //Process.Start(_steamPath, $"steam://connect/127.0.0.1:{this.Server.Port + 1}");
+                    Process.Start(_steamPath, $"-applaunch 892970 +connect 127.0.0.1:{this.Server.Port} +password \"{this.Server.Password}\"");
+                }
+                else
+                {
+                    Debug.WriteLine("Steam path not found");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+            }
         }
     }
 

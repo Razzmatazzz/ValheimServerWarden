@@ -86,12 +86,12 @@ namespace RazzTools
                 {
                     if (filter != null)
                     {
-                        filter = $" --filter=\"{filter}\"";
+                        filter = $" --filter={filter}";
                     } else
                     {
                         filter = "";
                     }
-                    var process = GetProcess($"install {GameName}{filter} --strict --no-input --dir=\"{ServerPath}\" -P");
+                    var process = GetProcess($"install {GameName}{filter} --strict --no-input --working-directory=\"{ServerPath}\" -P");
                     process.Exited += InstallProcess_Exited;
                     process.Start();
                     process.BeginOutputReadLine();
@@ -120,7 +120,7 @@ namespace RazzTools
             {
                 try
                 {
-                    var process = GetProcess($"update {updateComponents} --patch-available --strict --validate --prerelease --no-input --dir=\"{ServerPath}\"");
+                    var process = GetProcess($"update {updateComponents} --patch-available --strict --validate --prerelease --no-input --working-directory=\"{ServerPath}\"");
                     process.Exited += UpdateProcess_Exited;
                     process.Start();
                     process.BeginOutputReadLine();
