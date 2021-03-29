@@ -26,6 +26,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
@@ -69,7 +70,10 @@
             </TextBox.ContextMenu>
         </TextBox>
         <Button x:Name="btnRandomServerEvent" Content="Test" Tag="OnRandomServerEvent" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="10" Grid.Column="2" Click="btnTestWebhook_Click"/>
-        <Grid Grid.Row="11" Grid.ColumnSpan="3" HorizontalAlignment="Center">
+        <Label Content="Server Updated" Margin="10,5,5,5" VerticalAlignment="Center" Grid.Row="11" Grid.Column="0"/>
+        <TextBox x:Name="txtOnUpdated" Tag="OnUpdateEnded" Margin="5" Grid.Row="11" Grid.Column="1" />
+        <Button x:Name="btnTestUpdated" Content="Test" Tag="OnUpdateEnded" Margin="0,5,10,5" VerticalAlignment="Center" Grid.Row="11" Grid.Column="2" Click="btnTestWebhook_Click"/>
+        <Grid Grid.Row="12" Grid.ColumnSpan="3" HorizontalAlignment="Center">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="1*"/>
                 <ColumnDefinition Width="Auto"/>

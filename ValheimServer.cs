@@ -43,7 +43,8 @@ namespace ValheimServerWarden
             {"OnPlayerConnected", "{Player.Name} has entered the fray!" },
             {"OnPlayerDisconnected", "{Player.Name} has departed." },
             {"OnPlayerDied", "{Player.Name} met an untimely demise." },
-            {"OnRandomServerEvent", "{EventName} are attacking!" }
+            {"OnRandomServerEvent", "{EventName} are attacking!" },
+            {"OnUpdateEnded", "Server update complete." }
         };
         public static Dictionary<string, string> DiscordWebhookDefaultAttackNames { get; } = new Dictionary<string, string>
         {
@@ -92,6 +93,7 @@ namespace ValheimServerWarden
         public event EventHandler<EventArgs> Stopping;
         public event EventHandler<ServerStoppedEventArgs> StoppedUnexpectedly;
         public event EventHandler<ServerErrorEventArgs> ErrorOccurred;
+        public event EventHandler<UpdateCheckEventArgs> CheckingForUpdate;
         public event EventHandler<UpdateCheckEventArgs> CheckedForUpdate;
         public event EventHandler<UpdateEndedEventArgs> UpdateEnded;
         public event DataReceivedEventHandler OutputDataReceived
@@ -435,6 +437,8 @@ namespace ValheimServerWarden
                 return 0;
             }
         }
+        //[JsonIgnore]
+        public string Version { get; set; }
         public ValheimServer(string name, int port, string world, string password, bool pubserver, bool autostart, bool rawlog, int restarthours, bool updateonrestart, int updatecheckminutes, string discordwebhook, Dictionary<string,string> discordmessages, Dictionary<string, string> discordservereventnames, ServerInstallMethod install, string instpath, ProcessPriorityClass processpriority, bool umodupdating)
         {
             this.data.name = name;
@@ -454,6 +458,7 @@ namespace ValheimServerWarden
             this.data.autoUpdateuMod = umodupdating;
             InstallMethod = install;
             InstallPath = instpath;
+            Version = "Unknown";
 
             this.process = new Process();
             this.process.StartInfo.EnvironmentVariables["SteamAppId"] = "892970";
@@ -575,6 +580,7 @@ namespace ValheimServerWarden
             if (message == "" || message == null) return;
             message = message.Replace("{Server.Name}", this.DisplayName);
             message = message.Replace("{Server.PlayerCount}", this.PlayerCount.ToString());
+            message = message.Replace("{Server.Version}", this.Version);
             if (player != null)
             {
                 message = message.Replace("{Player.Name}", player.Name);
@@ -737,18 +743,28 @@ namespace ValheimServerWarden
                 //army_moder
             }
 
-            //Monitor for server finishes starting
-            //Last since it should only happen once per server restart, so more efficient overall to check others first
             if (this.Status == ServerStatus.Starting)
             {
+                //Monitor for server version
+                rx = new Regex(@"Valheim version:(\d+\.\d+\.\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                match = rx.Match(msg);
+                if (match.Success)
+                {
+                    Version = match.Groups[1].ToString();
+                    //logMessage($"Server {this.Name}: started", LogType.Success);
+                    return;
+                }
+
+                //Monitor for server finishes starting
+                //Last since it should only happen once per server restart, so more efficient overall to check others first
                 rx = new Regex(@"DungeonDB Start \d+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
                 match = rx.Match(msg);
                 if (match.Success)
                 {
                     OnStarted(new EventArgs());
                     //logMessage($"Server {this.Name}: started", LogType.Success);
+                    return;
                 }
-                return;
             }
 
             //Monitor for server fails to start
@@ -1242,7 +1258,8 @@ namespace ValheimServerWarden
             {
                 OnErrorOccurred(new ServerErrorEventArgs($"Error sending Webhook for server start: {ex.Message}", ex));
             }
-            addToLog($"Server started.", LogEntryType.Success);
+            var v = Version == "Unknown" ? "" : " (" + Version + ")";
+            addToLog($"Server started{v}.", LogEntryType.Success);
             EventHandler<EventArgs> handler = Started;
             if (null != handler) handler(this, args);
         }
@@ -1282,6 +1299,15 @@ namespace ValheimServerWarden
             EventHandler<ServerErrorEventArgs> handler = ErrorOccurred;
             if (null != handler) handler(this, args);
         }
+        private void OnCheckingForUpdate(UpdateCheckEventArgs args)
+        {
+            if (args.Noisy)
+            {
+                addToLog($"Checking for server update...");
+            }
+            EventHandler<UpdateCheckEventArgs> handler = CheckingForUpdate;
+            if (null != handler) handler(this, args);
+        }
         private void OnCheckedForUpdate(UpdateCheckEventArgs args)
         {
             if (args.Success)
@@ -1310,6 +1336,14 @@ namespace ValheimServerWarden
             status = ServerStatus.Stopped;
             if (args.Updated)
             {
+                try
+                {
+                    SendDiscordWebhook(System.Reflection.MethodBase.GetCurrentMethod().Name, null, null);
+                }
+                catch (Exception ex)
+                {
+                    OnErrorOccurred(new ServerErrorEventArgs($"Error sending Webhook for server updated: {ex.Message}", ex));
+                }
                 addToLog("Update complete.", LogEntryType.Success);
             }
             else if (args.Result == UpdateEndedEventArgs.UpdateResults.AlreadyUpToDate)
@@ -1355,9 +1389,14 @@ namespace ValheimServerWarden
                         OnCheckedForUpdate(new UpdateCheckEventArgs($"SteamCMD was not found at {Properties.Settings.Default.SteamCMDPath}."));
                         return;
                     }
+                    OnCheckingForUpdate(new UpdateCheckEventArgs(false, false, noisy));
+                    var steamcmddir = (new FileInfo(Properties.Settings.Default.SteamCMDPath)).Directory.FullName;
+                    if (File.Exists($@"{steamcmddir}\appcache\appinfo.vdf")) File.Delete($@"{steamcmddir}\appcache\appinfo.vdf");
+                    //if (File.Exists($@"{steamcmddir}\appcache\packageinfo.vdf")) File.Delete($@"{steamcmddir}\appcache\packageinfo.vdf");
                     var process = new Process();
                     process.StartInfo.FileName = Properties.Settings.Default.SteamCMDPath;
                     process.StartInfo.Arguments = $"+login anonymous +app_info_update 1 +app_info_print {ValheimServer.SteamID} +quit";
+                    process.StartInfo.WorkingDirectory = new FileInfo(this.InstallPath).Directory.FullName;
                     process.StartInfo.CreateNoWindow = true;
                     process.EnableRaisingEvents = true;
                     process.StartInfo.RedirectStandardOutput = true;

@@ -65,10 +65,13 @@ namespace ValheimServerWarden
                 Properties.Settings.Default.UpgradeRequired = false;
                 Properties.Settings.Default.Save();
             }
-            //Width = Properties.Settings.Default.MainWindowWidth;
+            if (Properties.Settings.Default.MainWindowWidth > 0)
+            {
+                Width = Properties.Settings.Default.MainWindowWidth;
+            }
             if (Properties.Settings.Default.MainWindowHeight > 0)
             {
-                //Height = Properties.Settings.Default.MainWindowHeight;
+                Height = Properties.Settings.Default.MainWindowHeight;
             }
             LogEntry.NormalColor = ((SolidColorBrush)this.Foreground).Color;
             logEntries = new List<LogEntry>();
@@ -1278,13 +1281,19 @@ namespace ValheimServerWarden
 
         private void chkLog_Checked(object sender, RoutedEventArgs e)
         {
-            bool newValue = chkLog.IsChecked.HasValue ? chkLog.IsChecked.Value : false;
-            if (newValue & !Properties.Settings.Default.WriteAppLog)
+            try
             {
-                System.IO.File.WriteAllText(LogPath, DateTime.Now.ToString() + ": Version " + typeof(MainWindow).Assembly.GetName().Version + "\r\n");
+                bool newValue = chkLog.IsChecked.GetValueOrDefault();
+                if (newValue & !Properties.Settings.Default.WriteAppLog)
+                {
+                    System.IO.File.WriteAllText(LogPath, DateTime.Now.ToString() + ": Version " + typeof(MainWindow).Assembly.GetName().Version + "\r\n");
+                }
+                Properties.Settings.Default.WriteAppLog = newValue;
+                Properties.Settings.Default.Save();
+            } catch (Exception ex)
+            {
+                logMessage($"Error changing log option: {ex.Message}");
             }
-            Properties.Settings.Default.WriteAppLog = newValue;
-            Properties.Settings.Default.Save();
         }
 
         private void btnReportBug_Click(object sender, RoutedEventArgs e)

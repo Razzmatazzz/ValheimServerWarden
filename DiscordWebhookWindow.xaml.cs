@@ -54,6 +54,7 @@ namespace ValheimServerWarden
             messageControls.Add(txtOnStarted);
             messageControls.Add(txtOnStartFailed);
             messageControls.Add(txtOnServerExited);
+            messageControls.Add(txtOnUpdated);
             foreach (var textBox in messageControls)
             {
                 textBox.Text = server.GetWebhookMessage(textBox.Tag.ToString());
