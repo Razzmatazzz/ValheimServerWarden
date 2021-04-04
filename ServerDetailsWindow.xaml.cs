@@ -33,7 +33,6 @@ namespace ValheimServerWarden
         public event EventHandler<ServerEventArgs> ShowLog;
         private ValheimServer _server;
         private string _steamPath;
-        private string _externalIP;
         private System.Timers.Timer resourceTimer;
         public ValheimServer Server
         {
@@ -84,7 +83,6 @@ namespace ValheimServerWarden
                 Debug.WriteLine("Error searching for Steam path");
                 Debug.WriteLine(ex);
             }
-            GetExternalIP();
             LoadLists();
 
             foreach (var entry in Server.LogEntries)
@@ -304,24 +302,6 @@ namespace ValheimServerWarden
                 lblMemory.Content = Server.MemoryUsed.ToString("N0") + " MB";
             });
         }
-
-        private void GetExternalIP()
-        {
-            new Thread(() =>
-            {
-                Thread.CurrentThread.IsBackground = true;
-                try
-                {
-                    _externalIP = new WebClient().DownloadString("http://icanhazip.com");
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine("Error getting external IP.");
-                    Debug.WriteLine(ex);
-                }
-            }).Start();
-        }
-
         private void LoadLists()
         {
             try
@@ -551,7 +531,7 @@ namespace ValheimServerWarden
         private void menuConnectLink_Click(object sender, RoutedEventArgs e)
         {
             // also test steam://run/892970//%2Bconnect%20{_externalIP}%3A{this.Server.Port}
-            Clipboard.SetText($"steam://connect/{_externalIP}:{this.Server.Port + 1}");
+            Clipboard.SetText($"steam://connect/{ValheimServer.ExternalIP}:{this.Server.Port + 1}");
         }
 
         private void chkAutoRestart_Checked(object sender, RoutedEventArgs e)
@@ -572,7 +552,7 @@ namespace ValheimServerWarden
         private void menuConnectCheckExternal_Click(object sender, RoutedEventArgs e)
         {
             //Process.Start("cmd", $"/C start https://southnode.net/form_get.php?ip={_externalIP}");
-            Process.Start("cmd", $"/C start https://geekstrom.de/valheim/check/?host={WebUtility.UrlEncode($"{_externalIP}:{Server.Port + 1}")}");
+            Process.Start("cmd", $"/C start https://geekstrom.de/valheim/check/?host={WebUtility.UrlEncode($"{ValheimServer.ExternalIP}:{Server.Port + 1}")}");
         }
 
         private void btnSteamCmd_Click(object sender, RoutedEventArgs e)

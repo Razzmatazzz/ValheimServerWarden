@@ -13,6 +13,7 @@ using System.Runtime.InteropServices;
 using System.IO;
 using System.Globalization;
 using RazzTools;
+using System.Net;
 
 namespace ValheimServerWarden
 {
@@ -36,7 +37,7 @@ namespace ValheimServerWarden
         public static string DefaultSaveDir { get { return $@"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}\AppData\LocalLow\IronGate\Valheim"; } }
         public static string ExecutableName { get { return "valheim_server.exe"; } }
         public static Dictionary<string, string> DiscordWebhookDefaultMessages { get; } = new Dictionary<string, string> {
-            {"OnStarted", "Server {Server.Name} has started." },
+            {"OnStarted", "Server {Server.Name} has started on {Server.IP}:{Server.Port} ({Server.Version})." },
             {"OnStartFailed", "Server {Server.Name} failed to start." },
             {"OnStopped", "Server {Server.Name} has stopped." },
             {"OnFailedPassword", "User with SteamID {Player.SteamID} tried to join with an invalid password." },
@@ -138,6 +139,7 @@ namespace ValheimServerWarden
         private bool inTxn = false;
         private int stopAttempts;
         private bool disposed = false;
+        private static string externalIP;
 
         public string Name
         {
@@ -439,6 +441,30 @@ namespace ValheimServerWarden
         }
         //[JsonIgnore]
         public string Version { get; set; }
+        [JsonIgnore]
+        public static string ExternalIP
+        {
+            get
+            {
+                return externalIP;
+            }
+        }
+        static ValheimServer()
+        {
+            new Thread(() =>
+            {
+                Thread.CurrentThread.IsBackground = true;
+                try
+                {
+                    externalIP = new WebClient().DownloadString("http://icanhazip.com").Trim();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("Error getting external IP.");
+                    Debug.WriteLine(ex);
+                }
+            }).Start();
+        }
         public ValheimServer(string name, int port, string world, string password, bool pubserver, bool autostart, bool rawlog, int restarthours, bool updateonrestart, int updatecheckminutes, string discordwebhook, Dictionary<string,string> discordmessages, Dictionary<string, string> discordservereventnames, ServerInstallMethod install, string instpath, ProcessPriorityClass processpriority, bool umodupdating)
         {
             this.data.name = name;
@@ -581,6 +607,8 @@ namespace ValheimServerWarden
             message = message.Replace("{Server.Name}", this.DisplayName);
             message = message.Replace("{Server.PlayerCount}", this.PlayerCount.ToString());
             message = message.Replace("{Server.Version}", this.Version);
+            message = message.Replace("{Server.IP}", ValheimServer.ExternalIP);
+            message = message.Replace("{Server.Port}", this.Port.ToString());
             if (player != null)
             {
                 message = message.Replace("{Player.Name}", player.Name);

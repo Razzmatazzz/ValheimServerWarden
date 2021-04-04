@@ -105,6 +105,7 @@ namespace ValheimServerWarden
             chkLog.IsChecked = Properties.Settings.Default.WriteAppLog;
             chkRunningServerCheck.IsChecked = Properties.Settings.Default.RunningServerCheck;
             chkStopOnClose.IsChecked = Properties.Settings.Default.StopOnClose;
+            chkStartMinimized.IsChecked = Properties.Settings.Default.StartMinimized;
             if (Properties.Settings.Default.AutoCheckUpdate)
             {
                 checkForUpdate();
@@ -1311,6 +1312,20 @@ namespace ValheimServerWarden
         {
             Properties.Settings.Default.StopOnClose = chkStopOnClose.IsChecked.GetValueOrDefault();
             Properties.Settings.Default.Save();
+        }
+
+        private void chkStartMinimized_Checked(object sender, RoutedEventArgs e)
+        {
+            Properties.Settings.Default.StartMinimized = chkStartMinimized.IsChecked.GetValueOrDefault();
+            Properties.Settings.Default.Save();
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (Properties.Settings.Default.StartMinimized)
+            {
+                this.WindowState = WindowState.Minimized;
+            }
         }
     }
 }

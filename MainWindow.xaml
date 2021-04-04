@@ -7,7 +7,7 @@
         ui:WindowHelper.UseModernWindowStyle="True"
         xmlns:local="clr-namespace:ValheimServerWarden"
         mc:Ignorable="d"
-        Title="Valheim Server Warden" Height="475" Width="800" Closed="Window_Closed" StateChanged="Window_StateChanged" Closing="Window_Closing" Icon="/Resources/vsw2_256.png" IsVisibleChanged="Window_IsVisibleChanged">
+        Title="Valheim Server Warden" Height="475" Width="800" Closed="Window_Closed" StateChanged="Window_StateChanged" Closing="Window_Closing" Icon="/Resources/vsw2_256.png" IsVisibleChanged="Window_IsVisibleChanged" Loaded="Window_Loaded">
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -145,14 +145,19 @@
                         <Button x:Name="btnUpdateCheck" Content="Check Now" Margin="5,5" VerticalAlignment="Center" Click="btnUpdateCheck_Click" Grid.Column="1"/>
                     </Grid>
                     <Grid Grid.Row="3">
+                        <Grid.RowDefinitions>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                        </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <CheckBox x:Name="chkRunningServerCheck" Content="Check for running servers on start" ToolTip="Check for any running servers on app start and provide the option to shut them down" Margin="10,5" Grid.Column="0" Checked="chkRunningServerCheck_Checked" Unchecked="chkRunningServerCheck_Checked"/>
-                        <CheckBox x:Name="chkStopOnClose" Content="Stop running servers on app close" ToolTip="Instead of preventing app closing when there are running servers, stop all running servers" Margin="10,5" Grid.Column="1" Checked="chkStopOnClose_Checked" Unchecked="chkStopOnClose_Checked"/>
+                        <CheckBox x:Name="chkRunningServerCheck" Content="Check for running servers on start" ToolTip="Check for any running servers on app start and provide the option to shut them down" Margin="10,5" Grid.Row="0" Grid.Column="0" Checked="chkRunningServerCheck_Checked" Unchecked="chkRunningServerCheck_Checked"/>
+                        <CheckBox x:Name="chkStopOnClose" Content="Stop running servers on app close" ToolTip="Instead of preventing app closing when there are running servers, stop all running servers" Margin="10,5" Grid.Row="0" Grid.Column="1" Checked="chkStopOnClose_Checked" Unchecked="chkStopOnClose_Checked"/>
+                        <CheckBox x:Name="chkStartMinimized" Content="Start minimized" ToolTip="Minimize app on startup" Margin="10,5" Grid.Row="1" Grid.Column="0" Checked="chkStartMinimized_Checked" Unchecked="chkStartMinimized_Checked"/>
+                        <CheckBox x:Name="chkLog" Content="Create log file" ToolTip="Write app log outpute to a file (useful for troubleshooting)" Margin="10,5" Grid.Row="1" Grid.Column="1" Checked="chkLog_Checked" Unchecked="chkLog_Checked"/>
                     </Grid>
-                    <CheckBox x:Name="chkLog" Content="Create log file" ToolTip="Write app log outpute to a file (useful for troubleshooting)" Margin="10,5" Grid.Row="4" Checked="chkLog_Checked" Unchecked="chkLog_Checked"/>
                 </Grid>
             </TabItem>
             <TabItem Header="Log">
