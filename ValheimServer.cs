@@ -395,6 +395,7 @@ namespace ValheimServerWarden
                 }
                 catch (Exception ex)
                 {
+                    addToLog($"Error getting server display name: {ex.Message}", LogEntryType.Error);
                     return Name;
                 }
             }
@@ -433,6 +434,7 @@ namespace ValheimServerWarden
                     }
                     catch (Exception ex)
                     {
+                        addToLog($"Error getting server memory usage: {ex.Message}", LogEntryType.Error);
                         return 0;
                     }
                 }
@@ -579,50 +581,71 @@ namespace ValheimServerWarden
 
         public string GetWebhookMessage(string EventName)
         {
-            if (this.DiscordWebhookMessages.ContainsKey(EventName))
+            try
             {
-                return this.DiscordWebhookMessages[EventName];
-            }
-            else if (DiscordWebhookDefaultMessages.ContainsKey(EventName))
+                if (this.DiscordWebhookMessages.ContainsKey(EventName))
+                {
+                    return this.DiscordWebhookMessages[EventName];
+                }
+                else if (DiscordWebhookDefaultMessages.ContainsKey(EventName))
+                {
+                    return DiscordWebhookDefaultMessages[EventName];
+                }
+            } 
+            catch (Exception ex)
             {
-                return DiscordWebhookDefaultMessages[EventName];
+                addToLog($"Error getting webhook message for {EventName}: {ex.Message}", LogEntryType.Error);
             }
             return null;
         }
         public string GetWebhookServerEventName(string serverEventName) {
-            if (this.DiscordServerEventNames.ContainsKey(serverEventName))
+            try
             {
-                return this.DiscordServerEventNames[serverEventName];
+                if (this.DiscordServerEventNames.ContainsKey(serverEventName))
+                {
+                    return this.DiscordServerEventNames[serverEventName];
+                }
+                else if (DiscordWebhookDefaultAttackNames.ContainsKey(serverEventName))
+                {
+                    return DiscordWebhookDefaultAttackNames[serverEventName];
+                }
+                return serverEventName;
             }
-            else if (DiscordWebhookDefaultAttackNames.ContainsKey(serverEventName))
+            catch (Exception ex)
             {
-                return DiscordWebhookDefaultAttackNames[serverEventName];
+                addToLog($"Error getting webhook server event name for {serverEventName}: {ex.Message}", LogEntryType.Error);
             }
-            return serverEventName;
+            return null;
         }
         public void SendDiscordWebhook(string EventName, Player player, string serverEventName)
         {
-            string message = GetWebhookMessage(EventName);
-            if (message == "" || message == null) return;
-            message = message.Replace("{Server.Name}", this.DisplayName);
-            message = message.Replace("{Server.PlayerCount}", this.PlayerCount.ToString());
-            message = message.Replace("{Server.Version}", this.Version);
-            message = message.Replace("{Server.IP}", ValheimServer.ExternalIP);
-            message = message.Replace("{Server.Port}", this.Port.ToString());
-            if (player != null)
+            try
             {
-                message = message.Replace("{Player.Name}", player.Name);
-                message = message.Replace("{Player}", player.Name);
-                message = message.Replace("{Player.SteamID}", player.SteamID);
-                message = message.Replace("{SteamID}", player.SteamID);
-                message = message.Replace("{Player.Deaths}", player.Deaths.ToString());
-                message = message.Replace("{Player.JoinTime}", player.JoinTime.ToString());
+                string message = GetWebhookMessage(EventName);
+                if (message == "" || message == null) return;
+                message = message.Replace("{Server.Name}", this.DisplayName);
+                message = message.Replace("{Server.PlayerCount}", this.PlayerCount.ToString());
+                message = message.Replace("{Server.Version}", this.Version);
+                message = message.Replace("{Server.IP}", ValheimServer.ExternalIP);
+                message = message.Replace("{Server.Port}", this.Port.ToString());
+                if (player != null)
+                {
+                    message = message.Replace("{Player.Name}", player.Name);
+                    message = message.Replace("{Player}", player.Name);
+                    message = message.Replace("{Player.SteamID}", player.SteamID);
+                    message = message.Replace("{SteamID}", player.SteamID);
+                    message = message.Replace("{Player.Deaths}", player.Deaths.ToString());
+                    message = message.Replace("{Player.JoinTime}", player.JoinTime.ToString());
+                }
+                if (serverEventName != null)
+                {
+                    message = message.Replace("{EventName}", GetWebhookServerEventName(serverEventName));
+                }
+                SendDiscordWebhook(message);
             }
-            if (serverEventName != null)
-            {
-                message = message.Replace("{EventName}", GetWebhookServerEventName(serverEventName));
+            catch (Exception ex) {
+                addToLog($"Error sending webhook for {EventName}: {ex.Message}", LogEntryType.Error);
             }
-            SendDiscordWebhook(message);
         }
         public void SendDiscordWebhook(string EventName, Player player)
         {
@@ -651,170 +674,178 @@ namespace ValheimServerWarden
 
         private void Process_OutputDataReceived(object sender, DataReceivedEventArgs e)
         {
-            string msg = e.Data;
-            if (msg == null) return;
-            //Debug.WriteLine(msg);
-            if (this.RawLog)
+            try
             {
-                try
+                string msg = e.Data;
+                if (msg == null) return;
+                //Debug.WriteLine(msg);
+                if (this.RawLog)
                 {
-                    StreamWriter writer = System.IO.File.AppendText(LogRawName);
-                    writer.WriteLine(msg);
-                    writer.Close();
-                }
-                catch (Exception ex)
-                {
-                    //not being able to clear the log is not a major problem
-                }
-            }
-
-            Regex rx;
-            Match match;
-
-            //Monitor for incorrect password attempts
-            rx = new Regex(@"Peer (\d+) has wrong password", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            match = rx.Match(msg);
-            if (match.Success)
-            {
-                if (connectingSteamIds.Contains(match.Groups[1].ToString()))
-                {
-                    connectingSteamIds.Remove(match.Groups[1].ToString());
-                }
-                OnFailedPassword(new FailedPasswordEventArgs(match.Groups[1].ToString()));
-                return;
-            }
-
-            //Monitor for initiation of new connection
-            rx = new Regex(@"Got handshake from client (\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            match = rx.Match(msg);
-            if (match.Success)
-            {
-                connectingSteamIds.Add(match.Groups[1].ToString());
-                return;
-            }
-
-            //Monitor for new player connected and player deaths
-            rx = new Regex(@"Got character ZDOID from (.+) : (-?\d+:-?\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            match = rx.Match(msg);
-            if (match.Success)
-            {
-                if (match.Groups[2].ToString().Equals("0:0"))
-                {
-                    //player died
-                    foreach (Player player in this.players)
+                    try
                     {
-                        if (player.Name.Equals(match.Groups[1].ToString()))
-                        {
-                            player.Deaths++;
-                            OnPlayerDied(new PlayerEventArgs(player));
-                            break;
-                        }
+                        StreamWriter writer = System.IO.File.AppendText(LogRawName);
+                        writer.WriteLine(msg);
+                        writer.Close();
                     }
-                } 
-                else if (connectingSteamIds.Count > 0)
-                {
-                    //player connected
-                    var steamid = connectingSteamIds.First();
-                    Player player = new Player(match.Groups[1].ToString(), steamid);
-                    this.players.Add(player);
-                    connectingSteamIds.Remove(steamid);
-                    OnPlayerConnected(new PlayerEventArgs(player));
-                }
-                return;
-            }
-
-            //Monitor for player disconnected
-            rx = new Regex(@"Closing socket (\d{2,})", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            match = rx.Match(msg);
-            if (match.Success)
-            {
-                string steamid = match.Groups[1].ToString();
-                //Player player = new Player(match.Groups[1].ToString(), this.connectingSteamID);
-                var playerfound = false;
-                foreach (Player player in this.players)
-                {
-                    if (steamid.Equals(player.SteamID))
+                    catch (Exception ex)
                     {
-                        this.players.Remove(player);
-                        OnPlayerDisconnected(new PlayerEventArgs(player));
-                        playerfound = true;
-                        if (this.PlayerCount == 0)
-                        {
-                            if (this.needsRestart)
-                            {
-                                OnScheduledRestart(new EventArgs());
-                            } else if (this.needsUpdate)
-                            {
-                                OnAutomaticUpdate(new EventArgs());
-                            }
-                        }
-                        break;
+                        //not being able to clear the log is not a major problem
                     }
                 }
-                if (!playerfound)
+
+                Regex rx;
+                Match match;
+
+                //Monitor for incorrect password attempts
+                rx = new Regex(@"Peer (\d+) has wrong password", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                match = rx.Match(msg);
+                if (match.Success)
                 {
                     if (connectingSteamIds.Contains(match.Groups[1].ToString()))
                     {
                         connectingSteamIds.Remove(match.Groups[1].ToString());
                     }
-                }
-                return;
-            }
-
-            //Monitor for random events
-            rx = new Regex(@"Random event set:([a-zA-Z0-9_]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            match = rx.Match(msg);
-            if (match.Success)
-            {
-                OnRandomServerEvent(new RandomServerEventArgs(match.Groups[1].ToString()));
-                return;
-                //army_moder
-            }
-
-            if (this.Status == ServerStatus.Starting)
-            {
-                //Monitor for server version
-                rx = new Regex(@"Valheim version:(\d+\.\d+\.\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-                match = rx.Match(msg);
-                if (match.Success)
-                {
-                    Version = match.Groups[1].ToString();
-                    //logMessage($"Server {this.Name}: started", LogType.Success);
+                    OnFailedPassword(new FailedPasswordEventArgs(match.Groups[1].ToString()));
                     return;
                 }
 
-                //Monitor for server finishes starting
-                //Last since it should only happen once per server restart, so more efficient overall to check others first
-                rx = new Regex(@"DungeonDB Start \d+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                //Monitor for initiation of new connection
+                rx = new Regex(@"Got handshake from client (\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
                 match = rx.Match(msg);
                 if (match.Success)
                 {
-                    OnStarted(new EventArgs());
-                    //logMessage($"Server {this.Name}: started", LogType.Success);
+                    connectingSteamIds.Add(match.Groups[1].ToString());
                     return;
                 }
+
+                //Monitor for new player connected and player deaths
+                rx = new Regex(@"Got character ZDOID from (.+) : (-?\d+:-?\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                match = rx.Match(msg);
+                if (match.Success)
+                {
+                    if (match.Groups[2].ToString().Equals("0:0"))
+                    {
+                        //player died
+                        foreach (Player player in this.players)
+                        {
+                            if (player.Name.Equals(match.Groups[1].ToString()))
+                            {
+                                player.Deaths++;
+                                OnPlayerDied(new PlayerEventArgs(player));
+                                break;
+                            }
+                        }
+                    }
+                    else if (connectingSteamIds.Count > 0)
+                    {
+                        //player connected
+                        var steamid = connectingSteamIds.First();
+                        Player player = new Player(match.Groups[1].ToString(), steamid);
+                        this.players.Add(player);
+                        connectingSteamIds.Remove(steamid);
+                        OnPlayerConnected(new PlayerEventArgs(player));
+                    }
+                    return;
+                }
+
+                //Monitor for player disconnected
+                rx = new Regex(@"Closing socket (\d{2,})", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                match = rx.Match(msg);
+                if (match.Success)
+                {
+                    string steamid = match.Groups[1].ToString();
+                    //Player player = new Player(match.Groups[1].ToString(), this.connectingSteamID);
+                    var playerfound = false;
+                    foreach (Player player in this.players)
+                    {
+                        if (steamid.Equals(player.SteamID))
+                        {
+                            this.players.Remove(player);
+                            OnPlayerDisconnected(new PlayerEventArgs(player));
+                            playerfound = true;
+                            if (this.PlayerCount == 0)
+                            {
+                                if (this.needsRestart)
+                                {
+                                    OnScheduledRestart(new EventArgs());
+                                }
+                                else if (this.needsUpdate)
+                                {
+                                    OnAutomaticUpdate(new EventArgs());
+                                }
+                            }
+                            break;
+                        }
+                    }
+                    if (!playerfound)
+                    {
+                        if (connectingSteamIds.Contains(match.Groups[1].ToString()))
+                        {
+                            connectingSteamIds.Remove(match.Groups[1].ToString());
+                        }
+                    }
+                    return;
+                }
+
+                //Monitor for random events
+                rx = new Regex(@"Random event set:([a-zA-Z0-9_]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                match = rx.Match(msg);
+                if (match.Success)
+                {
+                    OnRandomServerEvent(new RandomServerEventArgs(match.Groups[1].ToString()));
+                    return;
+                    //army_moder
+                }
+
+                if (this.Status == ServerStatus.Starting)
+                {
+                    //Monitor for server version
+                    rx = new Regex(@"Valheim version:(\d+\.\d+\.\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                    match = rx.Match(msg);
+                    if (match.Success)
+                    {
+                        Version = match.Groups[1].ToString();
+                        //logMessage($"Server {this.Name}: started", LogType.Success);
+                        return;
+                    }
+
+                    //Monitor for server finishes starting
+                    //Last since it should only happen once per server restart, so more efficient overall to check others first
+                    rx = new Regex(@"DungeonDB Start \d+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                    match = rx.Match(msg);
+                    if (match.Success)
+                    {
+                        OnStarted(new EventArgs());
+                        //logMessage($"Server {this.Name}: started", LogType.Success);
+                        return;
+                    }
+                }
+
+                //Monitor for server fails to start
+                // handled more robustly in the process exited event handler
+                /*rx = new Regex(@"GameServer.Init\(\) failed", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                match = rx.Match(msg);
+                if (match.Success)
+                {
+                    this.status = ServerStatus.Stopping;
+                    OnStartFailed(new ServerEventArgs(this));
+                    logMessage($"Server {this.Name} failed to start. Maybe try a different port", LogType.Error);
+                    return;
+                }*/
+
+                //Monitor for update to number of players connected
+                /*rx = new Regex(@"Connections (\d+) ZDOS:(?:\d+)  sent:(?:\d+) recv:(?:\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                match = rx.Match(msg);
+                if (match.Success)
+                {
+                    this.playerCount = Int16.Parse(match.Groups[1].ToString());
+                    OnPlayerCountUpdated(new ServerEventArgs(this));
+                }*/
             }
-
-            //Monitor for server fails to start
-            // handled more robustly in the process exited event handler
-            /*rx = new Regex(@"GameServer.Init\(\) failed", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            match = rx.Match(msg);
-            if (match.Success)
+            catch (Exception ex)
             {
-                this.status = ServerStatus.Stopping;
-                OnStartFailed(new ServerEventArgs(this));
-                logMessage($"Server {this.Name} failed to start. Maybe try a different port", LogType.Error);
-                return;
-            }*/
-
-            //Monitor for update to number of players connected
-            /*rx = new Regex(@"Connections (\d+) ZDOS:(?:\d+)  sent:(?:\d+) recv:(?:\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            match = rx.Match(msg);
-            if (match.Success)
-            {
-                this.playerCount = Int16.Parse(match.Groups[1].ToString());
-                OnPlayerCountUpdated(new ServerEventArgs(this));
-            }*/
+                addToLog($"Error processing server output: {ex.Message}", LogEntryType.Error);
+            }
         }
         public void Start()
         {
@@ -955,30 +986,37 @@ namespace ValheimServerWarden
             }
             new Thread(() =>
             {
-                if (AttachConsole((uint)this.process.Id))
+                try
                 {
-                    OnStopping(new EventArgs());
-                    SetConsoleCtrlHandler(null, true);
-                    GenerateConsoleCtrlEvent(ConsoleCtrlEvent.CTRL_C, 0);
-                    FreeConsole();
-                    this.process.WaitForExit(2000);
-                    SetConsoleCtrlHandler(null, false);
-                    this.intentionalExit = true;
-                    this.restartTimer.Enabled = false;
-                    this.updateTimer.Enabled = false;
-                }
-                else
-                {
-                    if (stopAttempts < 5)
+                    if (AttachConsole((uint)this.process.Id))
                     {
-                        stopAttempts++;
-                        this.Stop();
+                        OnStopping(new EventArgs());
+                        SetConsoleCtrlHandler(null, true);
+                        GenerateConsoleCtrlEvent(ConsoleCtrlEvent.CTRL_C, 0);
+                        FreeConsole();
+                        this.process.WaitForExit(2000);
+                        SetConsoleCtrlHandler(null, false);
+                        this.intentionalExit = true;
+                        this.restartTimer.Enabled = false;
+                        this.updateTimer.Enabled = false;
                     }
                     else
                     {
-                        OnStopFailed(new ServerErrorEventArgs($"Tried to attach console to stop server but failed 5 times; giving up."));
-                        stopAttempts = 0;
+                        if (stopAttempts < 5)
+                        {
+                            stopAttempts++;
+                            this.Stop();
+                        }
+                        else
+                        {
+                            OnStopFailed(new ServerErrorEventArgs($"Tried to attach console to stop server but failed 5 times; giving up."));
+                            stopAttempts = 0;
+                        }
                     }
+                }
+                catch (Exception ex)
+                {
+                    addToLog($"Error stopping server: {ex.Message}", LogEntryType.Error);
                 }
             }).Start();
         }
@@ -1168,9 +1206,16 @@ namespace ValheimServerWarden
             {
                 OnErrorOccurred(new ServerErrorEventArgs($"Error sending Webhook for failed password attempt: {ex.Message}", ex));
             }
-            addToLog($"Failed password attempt for steamid {args.SteamID}.");
-            EventHandler<FailedPasswordEventArgs> handler = FailedPassword;
-            if (null != handler) handler(this, args);
+            try
+            {
+                addToLog($"Failed password attempt for steamid {args.SteamID}.");
+                EventHandler<FailedPasswordEventArgs> handler = FailedPassword;
+                if (null != handler) handler(this, args);
+            }
+            catch (Exception ex)
+            {
+                addToLog($"Error firing FailedPassword event handlers: {ex.Message}", LogEntryType.Error);
+            }
         }
         private void OnPlayerConnected(PlayerEventArgs args)
         {
@@ -1182,9 +1227,16 @@ namespace ValheimServerWarden
             {
                 OnErrorOccurred(new ServerErrorEventArgs($"Error sending Webhook for player connected: {ex.Message}", ex));
             }
-            addToLog($"Player {args.Player.Name} ({args.Player.SteamID}) connected");
-            EventHandler<PlayerEventArgs> handler = PlayerConnected;
-            if (null != handler) handler(this, args);
+            try
+            {
+                addToLog($"Player {args.Player.Name} ({args.Player.SteamID}) connected");
+                EventHandler<PlayerEventArgs> handler = PlayerConnected;
+                if (null != handler) handler(this, args);
+            }
+            catch (Exception ex)
+            {
+                addToLog($"Error firing PlayerConnected event handlers: {ex.Message}", LogEntryType.Error);
+            }
         }
         private void OnPlayerDisconnected(PlayerEventArgs args)
         {
@@ -1196,9 +1248,16 @@ namespace ValheimServerWarden
             {
                 OnErrorOccurred(new ServerErrorEventArgs($"Error sending Webhook for player disconnected: {ex.Message}", ex));
             }
-            addToLog($"Player {args.Player.Name} ({args.Player.SteamID}) disconnected");
-            EventHandler<PlayerEventArgs> handler = PlayerDisconnected;
-            if (null != handler) handler(this, args);
+            try
+            {
+                addToLog($"Player {args.Player.Name} ({args.Player.SteamID}) disconnected");
+                EventHandler<PlayerEventArgs> handler = PlayerDisconnected;
+                if (null != handler) handler(this, args);
+            }
+            catch (Exception ex)
+            {
+                addToLog($"Error firing PlayerDisconnected event handlers: {ex.Message}", LogEntryType.Error);
+            }
         }
         private void OnPlayerDied(PlayerEventArgs args)
         {
@@ -1210,9 +1269,16 @@ namespace ValheimServerWarden
             {
                 OnErrorOccurred(new ServerErrorEventArgs($"Error sending Webhook for player death: {ex.Message}", ex));
             }
-            addToLog($"Player {args.Player.Name} ({args.Player.SteamID}) died");
-            EventHandler<PlayerEventArgs> handler = PlayerDied;
-            if (null != handler) handler(this, args);
+            try
+            {
+                addToLog($"Player {args.Player.Name} ({args.Player.SteamID}) died");
+                EventHandler<PlayerEventArgs> handler = PlayerDied;
+                if (null != handler) handler(this, args);
+            }
+            catch (Exception ex)
+            {
+                addToLog($"Error firing PlayerDied event handlers: {ex.Message}", LogEntryType.Error);
+            }
         }
         private void OnStopped(ServerStoppedEventArgs args)
         {
@@ -1225,22 +1291,36 @@ namespace ValheimServerWarden
             {
                 OnErrorOccurred(new ServerErrorEventArgs($"Error sending Webhook for server stop: {ex.Message}", ex));
             }
-            if (args.ExitCode == 0 || args.ExitCode == -1073741510)
+            try
             {
-                addToLog($"Server stopped.");
+                if (args.ExitCode == 0 || args.ExitCode == -1073741510)
+                {
+                    addToLog($"Server stopped.");
+                }
+                else
+                {
+                    addToLog($"Server exited with code {args.ExitCode}.", LogEntryType.Error);
+                }
+                EventHandler<ServerStoppedEventArgs> handler = Stopped;
+                if (null != handler) handler(this, args);
             }
-            else
+            catch (Exception ex)
             {
-                addToLog($"Server exited with code {args.ExitCode}.", LogEntryType.Error);
+                addToLog($"Error firing Stopped event handlers: {ex.Message}", LogEntryType.Error);
             }
-            EventHandler<ServerStoppedEventArgs> handler = Stopped;
-            if (null != handler) handler(this, args);
         }
         private void OnServerStoppedUnexpectedly(ServerStoppedEventArgs args)
         {
-            addToLog($"Server stopped unexpectedly.", LogEntryType.Error);
-            EventHandler<ServerStoppedEventArgs> handler = StoppedUnexpectedly;
-            if (null != handler) handler(this, args);
+            try
+            {
+                addToLog($"Server stopped unexpectedly.", LogEntryType.Error);
+                EventHandler<ServerStoppedEventArgs> handler = StoppedUnexpectedly;
+                if (null != handler) handler(this, args);
+            }
+            catch (Exception ex)
+            {
+                addToLog($"Error firing ServerStoppedUnexpectedly event handlers: {ex.Message}", LogEntryType.Error);
+            }
         }
         private void OnRandomServerEvent(RandomServerEventArgs args)
         {
@@ -1252,28 +1332,56 @@ namespace ValheimServerWarden
             {
                 OnErrorOccurred(new ServerErrorEventArgs($"Error sending Webhook for random server eventt: {ex.Message}", ex));
             }
-            addToLog($"Random event {args.EventName}.");
-            EventHandler<RandomServerEventArgs> handler = RandomServerEvent;
-            if (null != handler) handler(this, args);
+            try
+            {
+                addToLog($"Random event {args.EventName}.");
+                EventHandler<RandomServerEventArgs> handler = RandomServerEvent;
+                if (null != handler) handler(this, args);
+            }
+            catch (Exception ex)
+            {
+                addToLog($"Error firing RandomServerEvent event handlers: {ex.Message}", LogEntryType.Error);
+            }
         }
         private void OnLoggedMessage(LoggedMessageEventArgs args)
         {
-            EventHandler<LoggedMessageEventArgs> handler = LoggedMessage;
-            if (null != handler) handler(this, args);
+            try
+            {
+                EventHandler<LoggedMessageEventArgs> handler = LoggedMessage;
+                if (null != handler) handler(this, args);
+            }
+            catch (Exception ex)
+            {
+                addToLog($"Error firing LoggedMessage event handlers: {ex.Message}", LogEntryType.Error);
+            }
         }
         private void OnStarting(EventArgs args)
         {
-            this.status = ServerStatus.Starting;
-            addToLog("Server starting...");
-            EventHandler<EventArgs> handler = Starting;
-            if (null != handler) handler(this, args);
+            try
+            {
+                this.status = ServerStatus.Starting;
+                addToLog("Server starting...");
+                EventHandler<EventArgs> handler = Starting;
+                if (null != handler) handler(this, args);
+            }
+            catch (Exception ex)
+            {
+                addToLog($"Error firing Starting event handlers: {ex.Message}", LogEntryType.Error);
+            }
         }
         private void OnStopping(EventArgs args)
         {
-            this.status = ServerStatus.Stopping;
-            addToLog("Server stopping...");
-            EventHandler<EventArgs> handler = Stopping;
-            if (null != handler) handler(this, args);
+            try
+            {
+                this.status = ServerStatus.Stopping;
+                addToLog("Server stopping...");
+                EventHandler<EventArgs> handler = Stopping;
+                if (null != handler) handler(this, args);
+            }
+            catch (Exception ex)
+            {
+                addToLog($"Error firing Stopping event handlers: {ex.Message}", LogEntryType.Error);
+            }
         }
         private void OnStarted(EventArgs args)
         {
@@ -1286,120 +1394,180 @@ namespace ValheimServerWarden
             {
                 OnErrorOccurred(new ServerErrorEventArgs($"Error sending Webhook for server start: {ex.Message}", ex));
             }
-            var v = Version == "Unknown" ? "" : " (" + Version + ")";
-            addToLog($"Server started{v}.", LogEntryType.Success);
-            EventHandler<EventArgs> handler = Started;
-            if (null != handler) handler(this, args);
+            try
+            {
+                var v = Version == "Unknown" ? "" : " (" + Version + ")";
+                addToLog($"Server started{v}.", LogEntryType.Success);
+                EventHandler<EventArgs> handler = Started;
+                if (null != handler) handler(this, args);
+            }
+            catch (Exception ex)
+            {
+                addToLog($"Error firing Started event handlers: {ex.Message}", LogEntryType.Error);
+            }
         }
         private void OnStartFailed(ServerErrorEventArgs args)
         {
-            this.status = ServerStatus.Stopped;
-            addToLog(args.Message, LogEntryType.Error);
-            EventHandler<ServerErrorEventArgs> handler = StartFailed;
-            if (null != handler) handler(this, args);
+            try
+            {
+                this.status = ServerStatus.Stopped;
+                addToLog(args.Message, LogEntryType.Error);
+                EventHandler<ServerErrorEventArgs> handler = StartFailed;
+                if (null != handler) handler(this, args);
+            }
+            catch (Exception ex)
+            {
+                addToLog($"Error firing StartFailed event handlers: {ex.Message}", LogEntryType.Error);
+            }
         }
         private void OnStopFailed(ServerErrorEventArgs args)
         {
-            this.status = ServerStatus.Running;
-            addToLog(args.Message, LogEntryType.Error);
-            EventHandler<ServerErrorEventArgs> handler = StopFailed;
-            if (null != handler) handler(this, args);
+            try
+            {
+                this.status = ServerStatus.Running;
+                addToLog(args.Message, LogEntryType.Error);
+                EventHandler<ServerErrorEventArgs> handler = StopFailed;
+                if (null != handler) handler(this, args);
+            }
+            catch (Exception ex)
+            {
+                addToLog($"Error firing StopFailed event handlers: {ex.Message}", LogEntryType.Error);
+            }
         }
         private void OnScheduledRestart(EventArgs args)
         {
-            scheduledRestart = true;
-            addToLog($"Initiating scheduled restart...");
-            EventHandler<EventArgs> handler = ScheduledRestart;
-            if (null != handler) handler(this, args);
-            this.Stop();
+            try
+            {
+                scheduledRestart = true;
+                addToLog($"Initiating scheduled restart...");
+                EventHandler<EventArgs> handler = ScheduledRestart;
+                if (null != handler) handler(this, args);
+                this.Stop();
+            }
+            catch (Exception ex)
+            {
+                addToLog($"Error firing ScheduledRestart event handlers: {ex.Message}", LogEntryType.Error);
+            }
         }
         private void OnAutomaticUpdate(EventArgs args)
         {
-            this.automaticUpdate = true;
-            addToLog($"Initiating automatic update...");
-            EventHandler<EventArgs> handler = AutomaticUpdate;
-            if (null != handler) handler(this, args);
-            this.Stop();
+            try
+            {
+                this.automaticUpdate = true;
+                addToLog($"Initiating automatic update...");
+                EventHandler<EventArgs> handler = AutomaticUpdate;
+                if (null != handler) handler(this, args);
+                this.Stop();
+            }
+            catch (Exception ex)
+            {
+                addToLog($"Error firing AutomaticUpdate event handlers: {ex.Message}", LogEntryType.Error);
+            }
         }
         private void OnErrorOccurred(ServerErrorEventArgs args)
         {
-            addToLog(args.Message, LogEntryType.Error);
-            EventHandler<ServerErrorEventArgs> handler = ErrorOccurred;
-            if (null != handler) handler(this, args);
+            try
+            {
+                addToLog(args.Message, LogEntryType.Error);
+                EventHandler<ServerErrorEventArgs> handler = ErrorOccurred;
+                if (null != handler) handler(this, args);
+            }
+            catch (Exception ex)
+            {
+                addToLog($"Error firing ErrorOccurred event handlers: {ex.Message}", LogEntryType.Error);
+            }
         }
         private void OnCheckingForUpdate(UpdateCheckEventArgs args)
         {
-            if (args.Noisy)
+            try
             {
-                addToLog($"Checking for server update...");
+                if (args.Noisy)
+                {
+                    addToLog($"Checking for server update...");
+                }
+                EventHandler<UpdateCheckEventArgs> handler = CheckingForUpdate;
+                if (null != handler) handler(this, args);
             }
-            EventHandler<UpdateCheckEventArgs> handler = CheckingForUpdate;
-            if (null != handler) handler(this, args);
+            catch (Exception ex)
+            {
+                addToLog($"Error firing CheckingForUpdate event handlers: {ex.Message}", LogEntryType.Error);
+            }
         }
         private void OnCheckedForUpdate(UpdateCheckEventArgs args)
         {
-            if (args.Success)
+            try
             {
-                if (args.UpdateAvailable)
+                if (args.Success)
                 {
-                    if (InstallMethod == ServerInstallMethod.SteamCMD)
+                    if (args.UpdateAvailable)
                     {
-                        addToLog($"Server update available.", LogEntryType.Success);
+                        if (InstallMethod == ServerInstallMethod.SteamCMD)
+                        {
+                            addToLog($"Server update available.", LogEntryType.Success);
+                        }
+                    }
+                    else if (args.Noisy)
+                    {
+                        addToLog($"No server update available.");
                     }
                 }
-                else if (args.Noisy)
+                else
                 {
-                    addToLog($"No server update available.");
+                    addToLog(args.Message, LogEntryType.Error);
                 }
+                EventHandler<UpdateCheckEventArgs> handler = CheckedForUpdate;
+                if (null != handler) handler(this, args);
             }
-            else
+            catch (Exception ex)
             {
-                addToLog(args.Message, LogEntryType.Error);
+                addToLog($"Error firing CheckedForUpdate event handlers: {ex.Message}", LogEntryType.Error);
             }
-            EventHandler<UpdateCheckEventArgs> handler = CheckedForUpdate;
-            if (null != handler) handler(this, args);
         }
         private void OnUpdateEnded(UpdateEndedEventArgs args)
         {
-            status = ServerStatus.Stopped;
-            if (args.Updated)
+            try
             {
-                try
+                status = ServerStatus.Stopped;
+                if (args.Updated)
                 {
-                    SendDiscordWebhook(System.Reflection.MethodBase.GetCurrentMethod().Name, null, null);
+                    try
+                    {
+                        SendDiscordWebhook(System.Reflection.MethodBase.GetCurrentMethod().Name, null, null);
+                    }
+                    catch (Exception ex)
+                    {
+                        OnErrorOccurred(new ServerErrorEventArgs($"Error sending Webhook for server updated: {ex.Message}", ex));
+                    }
+                    addToLog("Update complete.", LogEntryType.Success);
                 }
-                catch (Exception ex)
+                else if (args.Result == UpdateEndedEventArgs.UpdateResults.AlreadyUpToDate)
                 {
-                    OnErrorOccurred(new ServerErrorEventArgs($"Error sending Webhook for server updated: {ex.Message}", ex));
+                    addToLog("Server already up to date.");
                 }
-                addToLog("Update complete.", LogEntryType.Success);
+                else
+                {
+                    addToLog(args.Message, LogEntryType.Error);
+                }
+                EventHandler<UpdateEndedEventArgs> handler = UpdateEnded;
+                if (null != handler) handler(this, args);
             }
-            else if (args.Result == UpdateEndedEventArgs.UpdateResults.AlreadyUpToDate)
+            catch (Exception ex)
             {
-                addToLog("Server already up to date.");
+                addToLog($"Error firing UpdateEnded event handlers: {ex.Message}", LogEntryType.Error);
             }
-            else
-            {
-                addToLog(args.Message, LogEntryType.Error);
-            }
-            EventHandler<UpdateEndedEventArgs> handler = UpdateEnded;
-            if (null != handler) handler(this, args);
         }
-        /*private void OutputReceived(DataReceivedEventArgs args)
-        {
-            EventHandler<DataReceivedEventArgs> handler = OutputDataReceived;
-            if (null != handler) handler(this, args);
-        }
-        private void ErrorReceived(DataReceivedEventArgs args)
-        {
-            EventHandler<DataReceivedEventArgs> handler = ErrorDataReceived;
-            if (null != handler) handler(this, args);
-        }*/
         private void addToLog(string message, LogEntryType t)
         {
-            var entry = new LogEntry(message, t);
-            LogEntries.Add(entry);
-            OnLoggedMessage(new LoggedMessageEventArgs(entry));
+            try
+            {
+                var entry = new LogEntry(message, t);
+                LogEntries.Add(entry);
+                OnLoggedMessage(new LoggedMessageEventArgs(entry));
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error adding message to log: {ex.Message}");
+            }
         }
         private void addToLog(string message)
         {
@@ -1407,9 +1575,9 @@ namespace ValheimServerWarden
         }
         public void CheckForUpdate(bool noisy)
         {
-            try
+            new Thread(() =>
             {
-                new Thread(() =>
+                try
                 {
                     //addToLog($"Checking for server update...");
                     if (!File.Exists(Properties.Settings.Default.SteamCMDPath))
@@ -1432,125 +1600,170 @@ namespace ValheimServerWarden
 
                     process.Exited += ((object sender, EventArgs e) =>
                     {
-                        var process = (Process)sender;
-                        var output = process.StandardOutput.ReadToEnd();
-                        output = output.Substring(output.IndexOf("\"depots\""));
-                        output = output.Substring(output.IndexOf("\"branches\""));
-                        output = output.Substring(output.IndexOf("\"public\""));
-                        output = output.Substring(0, output.IndexOf("}"));
-                        Regex rx = new Regex("\"buildid\"\\s+\"(\\d+)\"", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-                        Match match = rx.Match(output);
-                        if (match.Success)
+                        try
                         {
-                            var remoteBuild = Convert.ToInt32(match.Groups[1].ToString());
-                            if (remoteBuild == 0)
+                            var process = (Process)sender;
+                            var output = process.StandardOutput.ReadToEnd();
+                            int depotsIndex = output.IndexOf("\"depots\"");
+                            if (depotsIndex == -1)
                             {
-                                OnCheckedForUpdate(new UpdateCheckEventArgs($"Remote buildid {match.Groups[1]} is not a valid number."));
+                                OnCheckedForUpdate(new UpdateCheckEventArgs($"Could not find 'depots' node for update check."));
                                 return;
                             }
-                            var manifestpath = new FileInfo(this.InstallPath).DirectoryName + $@"\steamapps\appmanifest_{ValheimServer.SteamID}.acf";
-                            var appManifestFound = File.Exists(manifestpath);
-                            if (!appManifestFound)
+                            output = output.Substring(depotsIndex);
+                            int branchesIndex = output.IndexOf("\"branches\"");
+                            if (branchesIndex == -1)
                             {
-                                var steamcmdpath = new FileInfo(Properties.Settings.Default.SteamCMDPath).DirectoryName;
-                                if (this.InstallPath.StartsWith($@"{steamcmdpath}\steamapps\common"))
+                                OnCheckedForUpdate(new UpdateCheckEventArgs($"Could not find 'branches' node for update check."));
+                                return;
+                            }
+                            output = output.Substring(branchesIndex);
+                            int publicIndex = output.IndexOf("\"public\"");
+                            if (publicIndex == -1)
+                            {
+                                OnCheckedForUpdate(new UpdateCheckEventArgs($"Could not find 'public' node for update check."));
+                                return;
+                            }
+                            output = output.Substring(publicIndex);
+                            int closingbraceIndex = output.IndexOf("}");
+                            if (closingbraceIndex == -1)
+                            {
+                                OnCheckedForUpdate(new UpdateCheckEventArgs($"Could not find closing bracket of 'public' node for update check."));
+                                return;
+                            }
+                            output = output.Substring(0, closingbraceIndex);
+                            Regex rx = new Regex("\"buildid\"\\s+\"(\\d+)\"", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                            Match match = rx.Match(output);
+                            if (match.Success)
+                            {
+                                var remoteBuild = Convert.ToInt32(match.Groups[1].ToString());
+                                if (remoteBuild == 0)
                                 {
-                                    if (File.Exists($@"{steamcmdpath}\steamapps\appmanifest_{ValheimServer.SteamID}.acf"))
+                                    OnCheckedForUpdate(new UpdateCheckEventArgs($"Remote buildid {match.Groups[1]} is not a valid number."));
+                                    return;
+                                }
+                                var manifestpath = new FileInfo(this.InstallPath).DirectoryName + $@"\steamapps\appmanifest_{ValheimServer.SteamID}.acf";
+                                var appManifestFound = File.Exists(manifestpath);
+                                if (!appManifestFound)
+                                {
+                                    var steamcmdpath = new FileInfo(Properties.Settings.Default.SteamCMDPath).DirectoryName;
+                                    if (this.InstallPath.StartsWith($@"{steamcmdpath}\steamapps\common"))
                                     {
-                                        manifestpath = $@"{steamcmdpath}\steamapps\appmanifest_{ValheimServer.SteamID}.acf";
-                                        appManifestFound = true;
+                                        if (File.Exists($@"{steamcmdpath}\steamapps\appmanifest_{ValheimServer.SteamID}.acf"))
+                                        {
+                                            manifestpath = $@"{steamcmdpath}\steamapps\appmanifest_{ValheimServer.SteamID}.acf";
+                                            appManifestFound = true;
+                                        }
                                     }
                                 }
-                            }
-                            if (appManifestFound)
-                            {
-                                var manifest = File.ReadAllText(manifestpath);
-                                match = rx.Match(manifest);
-                                if (match.Success)
+                                if (appManifestFound)
                                 {
-                                    var localBuild = Convert.ToInt32(match.Groups[1].ToString());
-                                    if (localBuild == 0)
+                                    var manifest = File.ReadAllText(manifestpath);
+                                    match = rx.Match(manifest);
+                                    if (match.Success)
                                     {
-                                        OnCheckedForUpdate(new UpdateCheckEventArgs($"Local buildid {match.Groups[1]} is not a valid number."));
-                                        return;
+                                        var localBuild = Convert.ToInt32(match.Groups[1].ToString());
+                                        if (localBuild == 0)
+                                        {
+                                            OnCheckedForUpdate(new UpdateCheckEventArgs($"Local buildid {match.Groups[1]} is not a valid number."));
+                                            return;
+                                        }
+                                        OnCheckedForUpdate(new UpdateCheckEventArgs(true, remoteBuild > localBuild, noisy));
                                     }
-                                    OnCheckedForUpdate(new UpdateCheckEventArgs(true, remoteBuild > localBuild, noisy));
+                                    else
+                                    {
+                                        OnCheckedForUpdate(new UpdateCheckEventArgs($"Could not find local buildid for update check."));
+                                    }
                                 }
                                 else
                                 {
-                                    OnCheckedForUpdate(new UpdateCheckEventArgs($"Could not find local buildid for update check."));
+                                    OnCheckedForUpdate(new UpdateCheckEventArgs($"Could not find {manifestpath} for update check."));
                                 }
                             }
                             else
                             {
-                                OnCheckedForUpdate(new UpdateCheckEventArgs($"Could not find {manifestpath} for update check."));
+                                OnCheckedForUpdate(new UpdateCheckEventArgs($"Could find not remote buildid for update check."));
                             }
                         }
-                        else
+                        catch (Exception ex)
                         {
-                            OnCheckedForUpdate(new UpdateCheckEventArgs($"Could find not remote buildid for update check."));
+                            addToLog($"Error parsing update check output: {ex.Message}", LogEntryType.Error);
                         }
                     });
                     process.Start();
                     //process.WaitForExit();
-                }).Start();
-            }
-            catch (Exception ex)
-            {
-                OnCheckedForUpdate(new UpdateCheckEventArgs($"Error checking for new version: {ex.Message}"));
-            }
+                }
+                catch (Exception ex)
+                {
+                    OnCheckedForUpdate(new UpdateCheckEventArgs($"Error checking for new version: {ex.Message}"));
+                }
+            }).Start();
         }
         public void Update()
         {
-            if (!this.Running)
+            try
             {
-                status = ServerStatus.Updating;
-                foreach (var s in ValheimServer.Servers)
+                if (!this.Running)
                 {
-                    if (s != this && s.Status != ServerStatus.Stopped && s.InstallPath == this.InstallPath)
+                    status = ServerStatus.Updating;
+                    foreach (var s in ValheimServer.Servers)
                     {
-                        OnUpdateEnded(new UpdateEndedEventArgs($"Could not update server; server {s.DisplayName} uses the same installation and is running."));
+                        if (s != this && s.Status != ServerStatus.Stopped && s.InstallPath == this.InstallPath)
+                        {
+                            OnUpdateEnded(new UpdateEndedEventArgs($"Could not update server; server {s.DisplayName} uses the same installation and is running."));
+                            return;
+                        }
+                    }
+                    addToLog($"Updating server...");
+                    if (!File.Exists(Properties.Settings.Default.SteamCMDPath))
+                    {
+                        OnUpdateEnded(new UpdateEndedEventArgs($"SteamCMD was not found at {Properties.Settings.Default.SteamCMDPath}."));
                         return;
                     }
+                    var process = new Process();
+                    process.StartInfo.FileName = Properties.Settings.Default.SteamCMDPath;
+                    process.StartInfo.Arguments = $"+login anonymous +force_install_dir \"{(new FileInfo(this.InstallPath).Directory.FullName)}\" +app_update {ValheimServer.SteamID} +quit";
+                    process.StartInfo.CreateNoWindow = true;
+                    process.EnableRaisingEvents = true;
+                    process.StartInfo.RedirectStandardOutput = true;
+                    process.Exited += ((object sender, EventArgs e) =>
+                    {
+                        try
+                        {
+                            var process = (Process)sender;
+                            var output = process.StandardOutput.ReadToEnd();
+                            //Debug.Write(output);
+                            Regex rx = new Regex($"App '{SteamID}' already up to date.", RegexOptions.Compiled);
+                            Match match = rx.Match(output);
+                            if (match.Success)
+                            {
+                                OnUpdateEnded(new UpdateEndedEventArgs(UpdateEndedEventArgs.UpdateResults.AlreadyUpToDate));
+                                return;
+                            }
+                            rx = new Regex($"App '{SteamID}' fully installed.", RegexOptions.Compiled);
+                            match = rx.Match(output);
+                            if (match.Success)
+                            {
+                                OnUpdateEnded(new UpdateEndedEventArgs(UpdateEndedEventArgs.UpdateResults.Updated));
+                                return;
+                            }
+                            OnUpdateEnded(new UpdateEndedEventArgs("Update probably failed. Unrecognized output from SteamCMD."));
+                        }
+                        catch (Exception ex)
+                        {
+                            OnUpdateEnded(new UpdateEndedEventArgs($"Error during update: {ex.Message}"));
+                        }
+                    });
+                    process.Start();
                 }
-                addToLog($"Updating server...");
-                if (!File.Exists(Properties.Settings.Default.SteamCMDPath))
+                else
                 {
-                    OnUpdateEnded(new UpdateEndedEventArgs($"SteamCMD was not found at {Properties.Settings.Default.SteamCMDPath}."));
-                    return;
+                    OnUpdateEnded(new UpdateEndedEventArgs("Please stop the server before updating."));
                 }
-                var process = new Process();
-                process.StartInfo.FileName = Properties.Settings.Default.SteamCMDPath;
-                process.StartInfo.Arguments = $"+login anonymous +force_install_dir \"{(new FileInfo(this.InstallPath).Directory.FullName)}\" +app_update {ValheimServer.SteamID} +quit";
-                process.StartInfo.CreateNoWindow = true;
-                process.EnableRaisingEvents = true;
-                process.StartInfo.RedirectStandardOutput = true;
-                process.Exited += ((object sender, EventArgs e) =>
-                {
-                    var process = (Process)sender;
-                    var output = process.StandardOutput.ReadToEnd();
-                    //Debug.Write(output);
-                    Regex rx = new Regex($"App '{SteamID}' already up to date.", RegexOptions.Compiled);
-                    Match match = rx.Match(output);
-                    if (match.Success)
-                    {
-                        OnUpdateEnded(new UpdateEndedEventArgs(UpdateEndedEventArgs.UpdateResults.AlreadyUpToDate));
-                        return;
-                    }
-                    rx = new Regex($"App '{SteamID}' fully installed.", RegexOptions.Compiled);
-                    match = rx.Match(output);
-                    if (match.Success)
-                    {
-                        OnUpdateEnded(new UpdateEndedEventArgs(UpdateEndedEventArgs.UpdateResults.Updated));
-                        return;
-                    }
-                    OnUpdateEnded(new UpdateEndedEventArgs("Update probably failed. Unrecognized output from SteamCMD."));
-                });
-                process.Start();
             }
-            else
+            catch (Exception ex)
             {
-                OnUpdateEnded(new UpdateEndedEventArgs("Please stop the server before updating."));
+                OnUpdateEnded(new UpdateEndedEventArgs($"Error starting update: {ex.Message}"));
             }
         }
 

@@ -595,9 +595,15 @@ namespace ValheimServerWarden
         {
             this.Dispatcher.Invoke(() =>
             {
-                dgServers.CancelEdit();
-                dgServers.IsReadOnly = true;
-                RefreshDataGrid();
+                try
+                {
+                    dgServers.CancelEdit();
+                    dgServers.IsReadOnly = true;
+                    RefreshDataGrid();
+                } catch (Exception ex)
+                {
+                    logMessage($"Error refreshing server list on start/stop: {ex.Message}");
+                }
             });
         }
         private void Server_StopFailed(object sender, ServerErrorEventArgs e)
@@ -859,38 +865,50 @@ namespace ValheimServerWarden
             {
                 if (!suppressLog)
                 {
-                    if (txtLog.Document.Blocks.Count > 0)
+                    try
                     {
-                        txtLog.Document.Blocks.InsertBefore(txtLog.Document.Blocks.FirstBlock, (Block)entry);
-                    }
-                    else
+                        if (txtLog.Document.Blocks.Count > 0)
+                        {
+                            txtLog.Document.Blocks.InsertBefore(txtLog.Document.Blocks.FirstBlock, (Block)entry);
+                        }
+                        else
+                        {
+                            txtLog.Document.Blocks.Add((Block)entry);
+                        }
+                        if (entry.Message.Contains('\n'))
+                        {
+                            lblLastMessage.Content = entry.Message.Split('\n')[0];
+                        }
+                        else
+                        {
+                            lblLastMessage.Content = entry.Message;
+                        }
+                        lblLastMessage.Foreground = new SolidColorBrush(entry.Color);
+                        if (entry.Type == LogEntryType.Normal)
+                        {
+                            lblLastMessage.FontWeight = FontWeights.Normal;
+                        }
+                        else
+                        {
+                            lblLastMessage.FontWeight = FontWeights.Bold;
+                        }
+                    } catch (Exception ex)
                     {
-                        txtLog.Document.Blocks.Add((Block)entry);
-                    }
-                    if (entry.Message.Contains('\n'))
-                    {
-                        lblLastMessage.Content = entry.Message.Split('\n')[0];
-                    }
-                    else
-                    {
-                        lblLastMessage.Content = entry.Message;
-                    }
-                    lblLastMessage.Foreground = new SolidColorBrush(entry.Color);
-                    if (entry.Type == LogEntryType.Normal)
-                    {
-                        lblLastMessage.FontWeight = FontWeights.Normal;
-                    }
-                    else
-                    {
-                        lblLastMessage.FontWeight = FontWeights.Bold;
+                        logMessage($"Error logging message: {ex.Message}");
                     }
                 }
             });
             if (Properties.Settings.Default.WriteAppLog)
             {
-                StreamWriter writer = System.IO.File.AppendText(LogPath);
-                writer.WriteLine(entry.TimeStamp+": " +entry.Message);
-                writer.Close();
+                try
+                {
+                    StreamWriter writer = System.IO.File.AppendText(LogPath);
+                    writer.WriteLine(entry.TimeStamp + ": " + entry.Message);
+                    writer.Close();
+                } catch (Exception ex)
+                {
+                    logMessage($"Error writing to log file: {ex.Message}");
+                }
             }
         }
 
