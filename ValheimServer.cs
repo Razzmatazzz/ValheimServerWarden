@@ -453,6 +453,7 @@ namespace ValheimServerWarden
         }
         static ValheimServer()
         {
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
             new Thread(() =>
             {
                 Thread.CurrentThread.IsBackground = true;
@@ -723,12 +724,13 @@ namespace ValheimServerWarden
                 match = rx.Match(msg);
                 if (match.Success)
                 {
+                    var playername = FixPlayerNameEncoding(match.Groups[1].Value);
                     if (match.Groups[2].ToString().Equals("0:0"))
                     {
                         //player died
                         foreach (Player player in this.players)
                         {
-                            if (player.Name.Equals(match.Groups[1].ToString()))
+                            if (player.Name.Equals(playername))
                             {
                                 player.Deaths++;
                                 OnPlayerDied(new PlayerEventArgs(player));
@@ -740,7 +742,7 @@ namespace ValheimServerWarden
                     {
                         //player connected
                         var steamid = connectingSteamIds.First();
-                        Player player = new Player(match.Groups[1].ToString(), steamid);
+                        Player player = new Player(playername, steamid);
                         this.players.Add(player);
                         connectingSteamIds.Remove(steamid);
                         OnPlayerConnected(new PlayerEventArgs(player));
@@ -849,26 +851,33 @@ namespace ValheimServerWarden
         }
         public void Start()
         {
-            if (this.Status != ValheimServer.ServerStatus.Stopped)
+            try
             {
-                var oldstatus = this.Status;
-                OnStartFailed(new ServerErrorEventArgs("Server cannot start; it is already running."));
-                this.status = oldstatus;
-                return;
+                if (this.Status != ValheimServer.ServerStatus.Stopped)
+                {
+                    var oldstatus = this.Status;
+                    OnStartFailed(new ServerErrorEventArgs("Server cannot start; it is already running."));
+                    this.status = oldstatus;
+                    return;
+                }
+                OnStarting(new EventArgs());
+                if (uMod.AgentInstalled && AutoUpdateuMod)
+                {
+                    var umod = new uMod(this.InstallPath, "valheim");
+                    umod.UpdateEnded += StartuMod_UpdateEnded;
+                    umod.LoggedMessage += ((sender, args) => {
+                        //addToLog("uMod: "+args.LogEntry.Message, args.LogEntry.Type);
+                    });
+                    umod.Update("core apps extensions");
+                }
+                else
+                {
+                    StartServer();
+                }
             }
-            OnStarting(new EventArgs());
-            if (uMod.AgentInstalled && AutoUpdateuMod)
+            catch (Exception ex)
             {
-                var umod = new uMod(this.InstallPath, "valheim");
-                umod.UpdateEnded += StartuMod_UpdateEnded;
-                umod.LoggedMessage += ((sender, args) => {
-                    //addToLog("uMod: "+args.LogEntry.Message, args.LogEntry.Type);
-                });
-                umod.Update("core apps extensions");
-            }
-            else
-            {
-                StartServer();
+                addToLog($"Error initiating server start: {ex.Message}", LogEntryType.Error);
             }
         }
 
@@ -891,89 +900,103 @@ namespace ValheimServerWarden
 
         private void StartServer()
         {
-            if (this.Status != ServerStatus.Starting)
+            try
             {
-                OnStartFailed(new ServerErrorEventArgs($"Server cannot start; it is {this.Status}."));
-                return;
-            }
-            foreach (var s in ValheimServer.Servers)
-            {
-                if (s.Running && s != this)
+                if (this.Status != ServerStatus.Starting)
                 {
-                    IEnumerable<int> range = Enumerable.Range(s.Port, 2);
-                    if (range.Contains(this.Port) || range.Contains(this.Port + 1))
+                    OnStartFailed(new ServerErrorEventArgs($"Server cannot start; it is {this.Status}."));
+                    return;
+                }
+                foreach (var s in ValheimServer.Servers)
+                {
+                    if (s.Running && s != this)
                     {
-                        OnStartFailed(new ServerErrorEventArgs($"Server cannot start; server {s.DisplayName} is already running on conflicting port {s.Port}."));
-                        return;
+                        IEnumerable<int> range = Enumerable.Range(s.Port, 2);
+                        if (range.Contains(this.Port) || range.Contains(this.Port + 1))
+                        {
+                            OnStartFailed(new ServerErrorEventArgs($"Server cannot start; server {s.DisplayName} is already running on conflicting port {s.Port}."));
+                            return;
+                        }
+                        if (s.SaveDir == this.SaveDir && s.World == this.World)
+                        {
+                            OnStartFailed(new ServerErrorEventArgs($"Server cannot start; server {s.DisplayName} is already running using world {s.World}."));
+                            return;
+                        }
                     }
-                    if (s.SaveDir == this.SaveDir && s.World == this.World)
+                }
+                string saveDir = this.SaveDir;
+                if (saveDir == null || saveDir.Length == 0)
+                {
+                    saveDir = DefaultSaveDir;
+                }
+                string serverpath = InstallPath;//Properties.Settings.Default.ServerFilePath;
+                if (!File.Exists(serverpath))
+                {
+                    OnStartFailed(new ServerErrorEventArgs($"Server cannot start because {ValheimServer.ExecutableName} was not found at the server executable path ({serverpath}). Please update the server executable path."));
+                    return;
+                }
+                string arguments = $"-nographics -batchmode -name \"{this.Name}\" -port {this.Port} -world \"{this.World}\" -public {Convert.ToInt32(Public)}";
+                if (Password != null & Password.Length > 0)
+                {
+                    arguments += $" -password \"{this.Password}\"";
+                }
+                if (!saveDir.Equals(DefaultSaveDir))
+                {
+                    arguments += $" -savedir \"{this.SaveDir}\"";
+                }
+                this.intentionalExit = false;
+                new Thread(() =>
+                {
+                    try
                     {
-                        OnStartFailed(new ServerErrorEventArgs($"Server cannot start; server {s.DisplayName} is already running using world {s.World}."));
-                        return;
+                        if (this.RawLog)
+                        {
+                            System.IO.File.WriteAllText(LogRawName, "");
+                        }
+                        this.startTime = DateTime.Now;
+                        if (this.RestartHours > 0)
+                        {
+                            restartTimer.Interval = this.GetMilisecondsUntilRestart();
+                            restartTimer.Enabled = true;
+                            restartTimer.Start();
+                        }
+                        else
+                        {
+                            restartTimer.Enabled = false;
+                        }
+                        if (this.UpdateCheckMinutes > 0)
+                        {
+                            updateTimer.Interval = this.GetMilisecondsUntilUpdateCheck();
+                            updateTimer.Enabled = true;
+                            updateTimer.Start();
+                        }
+                        else
+                        {
+                            updateTimer.Enabled = false;
+                        }
+                        stopAttempts = 0;
+                        this.process.StartInfo.FileName = serverpath;
+                        this.process.StartInfo.Arguments = arguments;
+                        this.process.Refresh();
+                        this.needsRestart = false;
+                        this.scheduledRestart = false;
+                        this.needsUpdate = false;
+                        this.automaticUpdate = false;
+                        this.process.Start();
+                        this.process.PriorityClass = this.ProcessPriority;
+                        this.process.BeginOutputReadLine();
+                        this.process.WaitForExit();
                     }
-                }
+                    catch (Exception ex)
+                    {
+                        addToLog($"Error waiting for server process exit: {ex.Message}", LogEntryType.Error);
+                    }
+                }).Start();
             }
-            string saveDir = this.SaveDir;
-            if (saveDir == null || saveDir.Length == 0)
+            catch (Exception ex)
             {
-                saveDir = DefaultSaveDir;
+                addToLog($"Error starting server: {ex.Message}", LogEntryType.Error);
             }
-            string serverpath = InstallPath;//Properties.Settings.Default.ServerFilePath;
-            if (!File.Exists(serverpath))
-            {
-                OnStartFailed(new ServerErrorEventArgs($"Server cannot start because {ValheimServer.ExecutableName} was not found at the server executable path ({serverpath}). Please update the server executable path."));
-                return;
-            }
-            string arguments = $"-nographics -batchmode -name \"{this.Name}\" -port {this.Port} -world \"{this.World}\" -public {Convert.ToInt32(Public)}";
-            if (Password != null & Password.Length > 0)
-            {
-                arguments += $" -password \"{this.Password}\"";
-            }
-            if (!saveDir.Equals(DefaultSaveDir))
-            {
-                arguments += $" -savedir \"{this.SaveDir}\"";
-            }
-            this.intentionalExit = false;
-            new Thread(() =>
-            {
-                if (this.RawLog)
-                {
-                    System.IO.File.WriteAllText(LogRawName,"");
-                }
-                this.startTime = DateTime.Now;
-                if (this.RestartHours > 0)
-                {
-                    restartTimer.Interval = this.GetMilisecondsUntilRestart();
-                    restartTimer.Enabled = true;
-                    restartTimer.Start();
-                } 
-                else
-                {
-                    restartTimer.Enabled = false;
-                }
-                if (this.UpdateCheckMinutes > 0)
-                {
-                    updateTimer.Interval = this.GetMilisecondsUntilUpdateCheck();
-                    updateTimer.Enabled = true;
-                    updateTimer.Start();
-                }
-                else
-                {
-                    updateTimer.Enabled = false;
-                }
-                stopAttempts = 0;
-                this.process.StartInfo.FileName = serverpath;
-                this.process.StartInfo.Arguments = arguments;
-                this.process.Refresh();
-                this.needsRestart = false;
-                this.scheduledRestart = false;
-                this.needsUpdate = false;
-                this.automaticUpdate = false;
-                this.process.Start();
-                this.process.PriorityClass = this.ProcessPriority;
-                this.process.BeginOutputReadLine();
-                this.process.WaitForExit();
-            }).Start();
         }
 
         public void Stop()
@@ -1075,10 +1098,11 @@ namespace ValheimServerWarden
                 else if (unwantedexit)
                 {
                     OnServerStoppedUnexpectedly(new ServerStoppedEventArgs(this.process.ExitCode, this.intentionalExit));
-                    if (this.Autostart)
+                    /*if (this.Autostart)
                     {
                         this.Start();
-                    }
+                    }*/
+                    this.Start();
                 }
             }
         }
@@ -1783,6 +1807,13 @@ namespace ValheimServerWarden
                     }
                 }
             }).Start();
+        }
+        public static string FixPlayerNameEncoding(string n)
+        {
+            //var encoding = Encoding.GetEncoding(437);
+            var encoding = Encoding.GetEncoding(1252);
+            var bytes = encoding.GetBytes(n);
+            return Encoding.UTF8.GetString(bytes);
         }
         ~ValheimServer()
         {

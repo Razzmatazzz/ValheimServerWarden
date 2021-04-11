@@ -6,14 +6,14 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <StartupObject>ValheimServerWarden.App</StartupObject>
-    <Version>0.4.18</Version>
-    <AssemblyVersion>0.4.18.0</AssemblyVersion>
+    <Version>0.4.20</Version>
+    <AssemblyVersion>0.4.20.0</AssemblyVersion>
     <Product>ValheimServerWarden</Product>
     <Authors>Razzmatazz</Authors>
     <ApplicationIcon>Resources\vsw2.ico</ApplicationIcon>
     <PackageId>ValheimServerWarden</PackageId>
     <AssemblyName>Valheim Server Warden</AssemblyName>
-    <FileVersion>0.4.18.0</FileVersion>
+    <FileVersion>0.4.20.0</FileVersion>
     <Company>ValheimServerWarden</Company>
   </PropertyGroup>
 
@@ -63,6 +63,7 @@
   <ItemGroup>
     <PackageReference Include="HtmlAgilityPack" Version="1.11.30" />
     <PackageReference Include="ModernWpfUis" Version="1.2.0" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="5.0.0" />
   </ItemGroup>
 
   <ItemGroup>
