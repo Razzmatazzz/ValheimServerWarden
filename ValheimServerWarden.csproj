@@ -127,6 +127,6 @@
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent"> 
-    <Exec Command="copy &quot;$(TargetDir)Valheim Server Warden.runtimeconfig.json&quot; &quot;$(TargetDir)app.publish\&quot;&#xD;&#xA;copy &quot;$(TargetDir)Valheim Server Warden.dll&quot; &quot;$(TargetDir)app.publish\&quot;&#xD;&#xA;copy &quot;$(TargetDir)Valheim Server Warden.exe&quot; &quot;$(TargetDir)app.publish\&quot;&#xD;&#xA;copy &quot;$(TargetDir)ModernWpf.dll&quot; &quot;$(TargetDir)app.publish\&quot;&#xD;&#xA;copy &quot;$(TargetDir)HtmlAgilityPack.dll&quot; &quot;$(TargetDir)app.publish\&quot;&#xD;&#xA;if $(ConfigurationName) == Release &quot;C:\Program Files\7-Zip\7z.exe&quot; a %25userprofile%25\Desktop\vsw.zip &quot;$(TargetDir)app.publish\*&quot;" />
+    <Exec Command="if not exist &quot;$(TargetDir)app.publish\&quot; mkdir &quot;$(TargetDir)\app.publish\&quot;&#xD;&#xA;copy &quot;$(TargetDir)Valheim Server Warden.runtimeconfig.json&quot; &quot;$(TargetDir)app.publish\&quot;&#xD;&#xA;copy &quot;$(TargetDir)Valheim Server Warden.dll&quot; &quot;$(TargetDir)app.publish\&quot;&#xD;&#xA;copy &quot;$(TargetDir)Valheim Server Warden.exe&quot; &quot;$(TargetDir)app.publish\&quot;&#xD;&#xA;copy &quot;$(TargetDir)ModernWpf.dll&quot; &quot;$(TargetDir)app.publish\&quot;&#xD;&#xA;copy &quot;$(TargetDir)HtmlAgilityPack.dll&quot; &quot;$(TargetDir)app.publish\&quot;&#xD;&#xA;if $(ConfigurationName) == Release &quot;C:\Program Files\7-Zip\7z.exe&quot; a %25userprofile%25\Desktop\vsw.zip &quot;$(TargetDir)app.publish\*&quot;" />
   </Target>
 </Project>
