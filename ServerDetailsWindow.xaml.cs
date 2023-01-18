@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Diagnostics;
@@ -257,6 +257,7 @@ namespace ValheimServerWarden
                 txtPassword.Text = Server.Password;
                 txtSaveDir.Text = Server.SaveDir;
                 chkPublic.IsChecked = Server.Public;
+                chkCrossplay.IsChecked = Server.Crossplay;
                 if (Server.InstallPath != null)
                 {
                     txtServerDir.Text = Server.InstallPath;
@@ -427,6 +428,7 @@ namespace ValheimServerWarden
             Server.Password = txtPassword.Text;
             Server.SaveDir = txtSaveDir.Text;
             Server.Public = chkPublic.IsChecked.GetValueOrDefault();
+            Server.Crossplay = chkCrossplay.IsChecked.GetValueOrDefault();
             Server.InstallPath = txtServerDir.Text;
             Server.InstallMethod = (ValheimServer.ServerInstallMethod)cmbServerType.SelectedIndex;
 
