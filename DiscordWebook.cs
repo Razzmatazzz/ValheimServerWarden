@@ -24,8 +24,8 @@ namespace ValheimServerWarden
 
         public void SendMessage(string msgSend)
         {
-            discordValues.Add("username", UserName);
-            discordValues.Add("avatar_url", ProfilePicture);
+            //discordValues.Add("username", UserName);
+            //discordValues.Add("avatar_url", ProfilePicture);
             discordValues.Remove("content");
             discordValues.Add("content", msgSend);
 

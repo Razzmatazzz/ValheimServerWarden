@@ -692,7 +692,7 @@ namespace ValheimServerWarden
                         writer.WriteLine(msg);
                         writer.Close();
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         //not being able to clear the log is not a major problem
                     }

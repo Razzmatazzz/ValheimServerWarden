@@ -122,7 +122,7 @@ namespace ValheimServerWarden
                         }
                         prevExtentHeight = txtLog.ExtentHeight;
                     }
-                    catch (IOException ex)
+                    catch (IOException)
                     {
                         retryTimer.Interval = retryInterval;
                         retryTimer.Enabled = true;
