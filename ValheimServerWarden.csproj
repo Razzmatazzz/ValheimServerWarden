@@ -6,14 +6,14 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <StartupObject>ValheimServerWarden.App</StartupObject>
-    <Version>0.4.20</Version>
-    <AssemblyVersion>0.4.20.0</AssemblyVersion>
+    <Version>0.4.21</Version>
+    <AssemblyVersion>0.4.21.0</AssemblyVersion>
     <Product>ValheimServerWarden</Product>
     <Authors>Razzmatazz</Authors>
     <ApplicationIcon>Resources\vsw2.ico</ApplicationIcon>
     <PackageId>ValheimServerWarden</PackageId>
     <AssemblyName>Valheim Server Warden</AssemblyName>
-    <FileVersion>0.4.20.0</FileVersion>
+    <FileVersion>0.4.21.0</FileVersion>
     <Company>ValheimServerWarden</Company>
   </PropertyGroup>
 

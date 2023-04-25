@@ -466,6 +466,10 @@ namespace ValheimServerWarden
         static ValheimServer()
         {
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+            UpdateExternalIP();
+        }
+        private static void UpdateExternalIP()
+        {
             new Thread(() =>
             {
                 Thread.CurrentThread.IsBackground = true;
@@ -1418,6 +1422,7 @@ namespace ValheimServerWarden
                 addToLog("Server stopping...");
                 EventHandler<EventArgs> handler = Stopping;
                 if (null != handler) handler(this, args);
+                UpdateExternalIP();
             }
             catch (Exception ex)
             {
