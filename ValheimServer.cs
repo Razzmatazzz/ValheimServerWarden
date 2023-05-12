@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
@@ -69,6 +69,7 @@ namespace ValheimServerWarden
             internal string password;
             internal string savedir;
             internal bool pub;
+            internal bool crossplay;
             internal bool autostart;
             internal bool rawlog;
             internal int restartHours;
@@ -205,6 +206,17 @@ namespace ValheimServerWarden
             set
             {
                 this.data.pub = value;
+            }
+        }
+        public bool Crossplay
+        {
+            get
+            {
+                return this.data.crossplay;
+            }
+            set
+            {
+                this.data.crossplay = value;
             }
         }
         public bool Autostart
@@ -472,7 +484,7 @@ namespace ValheimServerWarden
                 }
             }).Start();
         }
-        public ValheimServer(string name, int port, string world, string password, bool pubserver, bool autostart, bool rawlog, int restarthours, bool updateonrestart, int updatecheckminutes, string discordwebhook, Dictionary<string,string> discordmessages, Dictionary<string, string> discordservereventnames, ServerInstallMethod install, string instpath, ProcessPriorityClass processpriority, bool umodupdating)
+        public ValheimServer(string name, int port, string world, string password, bool pubserver, bool crossplay, bool autostart, bool rawlog, int restarthours, bool updateonrestart, int updatecheckminutes, string discordwebhook, Dictionary<string,string> discordmessages, Dictionary<string, string> discordservereventnames, ServerInstallMethod install, string instpath, ProcessPriorityClass processpriority, bool umodupdating)
         {
             this.data.name = name;
             this.data.port = 2456;
@@ -480,6 +492,7 @@ namespace ValheimServerWarden
             this.data.password = password;
             this.data.savedir = "";
             this.data.pub = pubserver;
+            this.data.crossplay = crossplay;
             this.data.autostart = autostart;
             this.data.rawlog = rawlog;
             this.data.restartHours = restarthours;
@@ -562,11 +575,11 @@ namespace ValheimServerWarden
             }
         }
 
-        public ValheimServer() : this("My Server", 2456, "Dedicated", "Secret", false, false, false, 0, false, 0, null, new Dictionary<string, string>(), new Dictionary<string, string>(), ServerInstallMethod.Manual, Properties.Settings.Default.ServerFilePath, ProcessPriorityClass.Normal, false)
+        public ValheimServer() : this("My Server", 2456, "Dedicated", "Secret", false, false, false, false, 0, false, 0, null, new Dictionary<string, string>(), new Dictionary<string, string>(), ServerInstallMethod.Manual, Properties.Settings.Default.ServerFilePath, ProcessPriorityClass.Normal, false)
         {
         }
 
-        public ValheimServer(string name) : this(name, 2456, "Dedicated", "Secret", false, false, false, 0, false, 0, null, new Dictionary<string,string>(), new Dictionary<string, string>(), ServerInstallMethod.Manual, Properties.Settings.Default.ServerFilePath, ProcessPriorityClass.Normal, false)
+        public ValheimServer(string name) : this(name, 2456, "Dedicated", "Secret", false, false, false, false, 0, false, 0, null, new Dictionary<string,string>(), new Dictionary<string, string>(), ServerInstallMethod.Manual, Properties.Settings.Default.ServerFilePath, ProcessPriorityClass.Normal, false)
         {
 
         }
@@ -940,6 +953,10 @@ namespace ValheimServerWarden
                     return;
                 }
                 string arguments = $"-nographics -batchmode -name \"{this.Name}\" -port {this.Port} -world \"{this.World}\" -public {Convert.ToInt32(Public)}";
+                if (this.Crossplay)
+                {
+                    arguments += " -crossplay";
+                }
                 if (Password != null & Password.Length > 0)
                 {
                     arguments += $" -password \"{this.Password}\"";
